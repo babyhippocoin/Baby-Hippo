@@ -27,7 +27,7 @@ function levelFor(points: number) {
 }
 
 export function ProductFunnel() {
-  const { language, isBeginner, setMode } = useLearningMode();
+  const { language, isBeginner } = useLearningMode();
   const [completed, setCompleted] = useState<string[]>([]);
   const zh = language === "zh-TW";
 
@@ -130,7 +130,7 @@ export function ProductFunnel() {
               </a>
             </div>
             {completed.includes("funnel-exchange") && <span className="funnel-selected-status">
-              <Check size={14} /> {zh ? "已選擇交易所・+5 BHP" : "Exchange Selected · +5 BHP"}
+              <Check size={14} /> {zh ? "已選擇交易所・+5 BHC Points" : "Exchange Selected · +5 BHC Points"}
             </span>}
             {completed.includes("funnel-exchange") && !completed.includes("dca-started") && (
               <div className="funnel-custody-note">
@@ -142,8 +142,8 @@ export function ProductFunnel() {
               </div>
             )}
             <div className="funnel-custody-note"><ShieldCheck size={16} /> {zh
-              ? "打開合作連結不會獲得 BHP。只有在投資計畫中主動選擇平台，才會記錄「選擇交易所」進度。"
-              : "Opening a partner link does not award BHP. Exchange selection is recorded only when you actively choose a platform in your plan."}</div>
+              ? "打開合作連結不會獲得 BHC Points。只有在投資計畫中主動選擇平台，才會記錄「選擇交易所」進度。"
+              : "Opening a partner link does not award BHC Points. Exchange selection is recorded only when you actively choose a platform in your plan."}</div>
           </article>
 
           <article>
@@ -153,7 +153,7 @@ export function ProductFunnel() {
               ? (zh ? "定投像每月固定存一筆錢，不猜最低點。先把緊急預備金留好，再建立能長期做到的投入金額。" : "DCA is like a monthly saving plan. Keep emergency cash first, then choose an amount you can maintain.")
               : (zh ? "根據生活預算、市場週期與資產偏好，建立可持續的每月配置。" : "Build a sustainable monthly allocation from your budget, market cycle, and asset preferences.")}</p>
             <Link className="funnel-primary-action" href="/dca-planner">{zh ? "建立我的第一份定投計畫" : "Create My First DCA Plan"} <ArrowRight size={15} /></Link>
-            <Link className="funnel-secondary-action" href="/points">{zh ? "用 BHP 追蹤習慣" : "Track the habit with BHP"} <ArrowRight size={15} /></Link>
+            <Link className="funnel-secondary-action" href="/points">{zh ? "用 BHC Points 追蹤習慣" : "Track the habit with BHC Points"} <ArrowRight size={15} /></Link>
           </article>
 
           <a className="funnel-product-card funnel-etherfi-card" href="https://www.ether.fi/@14a14fc7"
@@ -197,7 +197,6 @@ export function ProductFunnel() {
             ))}</div>
             {advancedUnlocked
               ? <Link className="funnel-primary-action" href="/learn#aave" onClick={() => {
-                setMode("growth");
                 saveAchievement("funnel-aave");
               }}>
                 {zh ? "學習 Aave" : "Learn Aave"} <ArrowRight size={15} /></Link>

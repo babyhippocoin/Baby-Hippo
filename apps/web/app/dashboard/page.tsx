@@ -1068,7 +1068,7 @@ function Dashboard({
 }) {
   const market = useMarketData();
   const taipeiDate = useTaipeiDate();
-  const healthFactor = aave.data?.healthFactor ? Number(aave.data.healthFactor) : null;
+  const healthFactor = aave.data?.healthFactor ? Number(aave.data?.healthFactor) : null;
   const needsAaveWarning = healthFactor !== null && healthFactor < 2;
 
   return (
@@ -1265,26 +1265,10 @@ function WalletButton({
   onConnect: () => void;
   onDisconnect: () => void;
 }) {
-  if (!address) {
-    return (
-      <button className="button wallet-button" onClick={onConnect}>
-        <WalletCards size={17} />
-        Connect Wallet
-      </button>
-    );
-  }
-
   return (
-    <button
-      className="button wallet-button connected"
-      onClick={onDisconnect}
-      title="Disconnect this read-only session"
-    >
-      <span className="wallet-live-dot" />
-      <span>
-        <strong>{walletName}</strong>
-        <small>{shortAddress(address)}</small>
-      </span>
+    <button className="button wallet-button" disabled title="Wallet connection is not open during beta">
+      <Clock3 size={17} />
+      錢包連接開發中
     </button>
   );
 }
@@ -1451,7 +1435,7 @@ function AssetCard({
   );
 }
 
-function AaveCard({
+function LegacyAaveCard({
   walletAddress,
   aave,
   onClick,
@@ -1462,7 +1446,7 @@ function AaveCard({
   onClick: () => void;
   onConnect: () => void;
 }) {
-  const healthFactor = aave.data?.healthFactor ? Number(aave.data.healthFactor) : null;
+  const healthFactor = aave.data?.healthFactor ? Number(aave.data?.healthFactor) : null;
   const health = getHealthState(healthFactor, aave.data?.hasDebt ?? false);
 
   return (
@@ -1509,7 +1493,7 @@ function AaveCard({
             {aave.cooldownSeconds > 0 ? `Wait ${aave.cooldownSeconds}s` : "Retry"}
           </button>
         </div>
-      ) : aave.data && !aave.data.hasPosition ? (
+      ) : aave.data && !aave.data?.hasPosition ? (
         <div className="aave-connect-empty">
           <ShieldCheck size={22} />
           <strong>No Aave position found on Base</strong>
@@ -1521,17 +1505,17 @@ function AaveCard({
       ) : aave.data ? (
         <>
           <div className={`health-value ${health.tone}`}>
-            <strong>{healthFactor === null ? "—" : healthFactor.toFixed(2)}</strong>
+            <strong>{healthFactor?.toFixed(2) ?? "—"}</strong>
             <span>{health.description}</span>
           </div>
           <div className="aave-mini-totals">
-            <Fact label="Supplied" value={formatUsd(aave.data.totalSuppliedUsd)} />
-            <Fact label="Borrowed" value={formatUsd(aave.data.totalBorrowedUsd)} />
+            <Fact label="Supplied" value={formatUsd(aave.data?.totalSuppliedUsd ?? 0)} />
+            <Fact label="Borrowed" value={formatUsd(aave.data?.totalBorrowedUsd ?? 0)} />
           </div>
           <div className="updated">
             <WalletCards size={14} />
             {shortAddress(walletAddress)} · checked{" "}
-            {new Date(aave.data.checkedAt).toLocaleTimeString([], {
+            {new Date(aave.data?.checkedAt ?? Date.now()).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
             })}
@@ -1558,6 +1542,37 @@ function AaveCard({
           </button>
         </div>
       )}
+    </article>
+  );
+}
+
+function AaveCard({
+  onClick,
+}: {
+  walletAddress: string;
+  aave: AaveMonitorState;
+  onClick: () => void;
+  onConnect: () => void;
+}) {
+  return (
+    <article className="card aave-card">
+      <div className="card-top">
+        <div className="coin-icon purple"><Landmark size={25} /></div>
+        <div className="status-chip neutral"><Clock3 size={12} /> 開發中</div>
+      </div>
+      <div className="asset-label">
+        <h3>借貸健康監控</h3>
+        <span>Aave · Ether.fi · Base · Ethereum</span>
+      </div>
+      <div className="aave-connect-empty">
+        <ShieldCheck size={22} />
+        <strong>目前尚未開放</strong>
+        <span>錢包連接與鏈上同步功能暫時關閉，避免造成誤解。</span>
+      </div>
+      <button className="card-action" onClick={onClick}>
+        查看開發中功能
+        <ChevronRight size={16} />
+      </button>
     </article>
   );
 }
@@ -1733,7 +1748,47 @@ function AavePage({
   onDisconnectWallet: () => void;
   aave: AaveMonitorState;
 }) {
-  const healthFactor = aave.data?.healthFactor ? Number(aave.data.healthFactor) : null;
+  return (
+    <>
+      <PageHeader
+        eyebrow="Lobster Watch Beta"
+        title="借貸健康監控"
+        description="這項功能仍在開發中，目前不開放錢包連接或鏈上資料同步。"
+      />
+      <article className="aave-wallet-gate">
+        <div className="wallet-gate-icon"><Clock3 size={31} /></div>
+        <span className="eyebrow">Coming Soon</span>
+        <h2>借貸健康監控尚未開放</h2>
+        <p>我們正在設計一個讓新手也看得懂的借貸風險頁面。正式開放前，不會要求連接 Rabby、MetaMask 或 WalletConnect。</p>
+        <div className="read-only-promises">
+          <span><Check size={14} /> 預計支援 Aave</span>
+          <span><Check size={14} /> 預計支援 Ether.fi</span>
+          <span><Check size={14} /> Base 與 Ethereum</span>
+        </div>
+      </article>
+      <div className="section-heading">
+        <div><span className="eyebrow">未來功能</span><h2>清楚理解借貸風險</h2></div>
+      </div>
+      <div className="dashboard-grid">
+        {[
+          ["Health Factor", "健康係數"],
+          ["Borrow Ratio", "借款比例"],
+          ["Net APY", "淨年化收益率"],
+          ["Liquidation Alerts", "清算風險提醒"],
+        ].map(([title, detail]) => (
+          <article className="card" key={title}>
+            <div className="card-top">
+              <div className="coin-icon green"><Gauge size={22} /></div>
+              <div className="status-chip neutral"><span />開發中</div>
+            </div>
+            <div className="asset-label"><h3>{detail}</h3><span>{title}</span></div>
+          </article>
+        ))}
+      </div>
+    </>
+  );
+
+  const healthFactor = aave.data?.healthFactor ? Number(aave.data?.healthFactor) : null;
   const health = getHealthState(healthFactor, aave.data?.hasDebt ?? false);
 
   return (
@@ -1792,7 +1847,7 @@ function AavePage({
             {aave.cooldownSeconds > 0 ? `Try again in ${aave.cooldownSeconds}s` : "Refresh Aave Data"}
           </button>
         </article>
-      ) : aave.data && !aave.data.hasPosition ? (
+      ) : aave.data && !aave.data?.hasPosition ? (
         <article className="aave-wallet-gate empty-position">
           <div className="wallet-gate-icon">
             <ShieldCheck size={31} />
@@ -1833,7 +1888,7 @@ function AavePage({
               </div>
             </article>
           )}
-          {healthFactor !== null && healthFactor < 2 && (
+          {(healthFactor ?? Number.POSITIVE_INFINITY) < 2 && (
             <article className="aave-critical-warning">
               <CircleAlert size={23} />
               <div>
@@ -1852,7 +1907,7 @@ function AavePage({
               <div className="health-hero-top">
                 <div>
                   <span>Current Health Factor</span>
-                  <strong>{healthFactor === null ? "—" : healthFactor.toFixed(2)}</strong>
+                  <strong>{healthFactor?.toFixed(2) ?? "—"}</strong>
                 </div>
                 <div className={`risk-stamp ${health.tone}`}>
                   <ShieldCheck size={20} />
@@ -1868,7 +1923,7 @@ function AavePage({
                 <Activity size={16} />
                 <span>
                   Last checked{" "}
-                  {new Date(aave.data.checkedAt).toLocaleTimeString([], {
+                  {new Date(aave.data?.checkedAt ?? Date.now()).toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
                     second: "2-digit",
@@ -1905,16 +1960,16 @@ function AavePage({
                 </button>
               </div>
               <Fact label="Wallet Address" value={walletAddress} />
-              <Fact label="Total Supplied" value={formatUsd(aave.data.totalSuppliedUsd)} />
-              <Fact label="Total Borrowed" value={formatUsd(aave.data.totalBorrowedUsd)} />
-              <Fact label="Available Borrow" value={formatUsd(aave.data.availableBorrowUsd)} />
+              <Fact label="Total Supplied" value={formatUsd(aave.data?.totalSuppliedUsd ?? 0)} />
+              <Fact label="Total Borrowed" value={formatUsd(aave.data?.totalBorrowedUsd ?? 0)} />
+              <Fact label="Available Borrow" value={formatUsd(aave.data?.availableBorrowUsd ?? 0)} />
               <Fact
                 label="Net APY"
-                value={`${aave.data.netApy >= 0 ? "+" : ""}${aave.data.netApy.toFixed(2)}%`}
+                value={`${(aave.data?.netApy ?? 0) >= 0 ? "+" : ""}${(aave.data?.netApy ?? 0).toFixed(2)}%`}
               />
               <Fact
                 label="Health Factor"
-                value={healthFactor === null ? "No active borrow" : healthFactor.toFixed(2)}
+                value={healthFactor?.toFixed(2) ?? "No active borrow"}
               />
             </article>
           </div>
@@ -1928,7 +1983,7 @@ function AavePage({
               <span className="limit-copy">Live · manual refresh only</span>
             </div>
             <div className="aave-assets-grid">
-              {aave.data.assets.map((asset) => (
+              {aave.data?.assets.map((asset) => (
                 <article className="aave-asset-position" key={asset.symbol}>
                   <div className="aave-asset-title">
                     <span>{asset.symbol.slice(0, 1)}</span>
@@ -2394,7 +2449,7 @@ function PriceAlertModal({
   );
 }
 
-function ReminderModal({
+function LegacyReminderModal({
   language,
   onClose,
   onSave,
@@ -2445,6 +2500,87 @@ function ReminderModal({
       <div className="modal-actions">
         <button className="button secondary" onClick={onClose}>Cancel</button>
         <button className="button primary" onClick={onSave}>Save mock reminder</button>
+      </div>
+    </ModalShell>
+  );
+}
+
+function ReminderModal({
+  language,
+  onClose,
+  onSave,
+}: {
+  language: "zh-TW" | "en";
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const [asset, setAsset] = useState("BTC");
+  const [customAsset, setCustomAsset] = useState("");
+  const [frequency, setFrequency] = useState("weekly");
+  const isZh = language === "zh-TW";
+  const selectedAsset = asset === "CUSTOM"
+    ? customAsset.trim() || (isZh ? "自訂資產" : "Custom asset")
+    : asset;
+  const frequencies = [
+    { value: "weekly", zh: "每週", en: "Weekly" },
+    { value: "biweekly", zh: "每兩週", en: "Every 2 weeks" },
+    { value: "monthly", zh: "每月", en: "Monthly" },
+  ];
+  const frequencyLabel = frequencies.find((item) => item.value === frequency);
+
+  return (
+    <ModalShell
+      title={isZh ? "新增定投提醒" : "New DCA reminder"}
+      subtitle={isZh ? "這只會建立提醒，不會自動買入或執行交易。" : "This creates a reminder only. It never buys or trades an asset."}
+      onClose={onClose}
+    >
+      <div className="choice-group">
+        <span>{isZh ? "資產" : "Asset"}</span>
+        <div>
+          {["BTC", "ETH", "SOL", "LINK", "BNB", "HYP", "TAO", "IO", "DOGE", "CUSTOM"].map((item) => (
+            <button className={asset === item ? "selected" : ""} onClick={() => setAsset(item)} key={item}>
+              {item === "CUSTOM" ? (isZh ? "自訂資產" : "Custom asset") : item}
+            </button>
+          ))}
+        </div>
+      </div>
+      {asset === "CUSTOM" && (
+        <label className="field">
+          <span>{isZh ? "自訂資產名稱" : "Custom asset name"}</span>
+          <input value={customAsset} onChange={(event) => setCustomAsset(event.target.value)} placeholder={isZh ? "例如：MATIC" : "Example: MATIC"} />
+        </label>
+      )}
+      <label className="field">
+        <span>{isZh ? "提醒頻率" : "Frequency"}</span>
+        <select value={frequency} onChange={(event) => setFrequency(event.target.value)}>
+          {frequencies.map((item) => (
+            <option value={item.value} key={item.value}>{isZh ? item.zh : item.en}</option>
+          ))}
+        </select>
+      </label>
+      <div className="field-grid">
+        <label className="field">
+          <span>{isZh ? "開始日期" : "Start date"}</span>
+          <input type="date" defaultValue="2026-07-21" />
+        </label>
+        <label className="field">
+          <span>{isZh ? "提醒時間" : "Reminder time"}</span>
+          <input type="time" defaultValue="19:00" />
+        </label>
+      </div>
+      <label className="field">
+        <span>{isZh ? "規劃金額（選填）" : "Planning amount (optional)"}</span>
+        <input defaultValue="100" inputMode="numeric" />
+      </label>
+      <div className="modal-preview">
+        <CalendarClock size={18} />
+        {isZh
+          ? `${frequencyLabel?.zh}提醒我檢查 ${selectedAsset} 定投計畫，不會自動買入。`
+          : `Remind me ${frequencyLabel?.en.toLowerCase()} to review my ${selectedAsset} plan. No purchase happens automatically.`}
+      </div>
+      <div className="modal-actions">
+        <button className="button secondary" onClick={onClose}>{isZh ? "取消" : "Cancel"}</button>
+        <button className="button primary" onClick={onSave}>{isZh ? "儲存提醒" : "Save reminder"}</button>
       </div>
     </ModalShell>
   );

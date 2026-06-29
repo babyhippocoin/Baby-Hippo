@@ -156,7 +156,7 @@ const copy = {
     futureNote: "不承諾空投、代幣、現金、收益或其他財務回報。",
     reset: "重設全部進度",
     resetConfirm: "再次點擊確認重設",
-    footer: "BHP 僅代表本機教育成就，不具有金錢價值，也不能轉讓、交易或兌換。",
+    footer: "BHC Points 僅代表本機教育成就，不具有金錢價值，也不能轉讓、交易或兌換。",
   },
   en: {
     eyebrow: "Baby Hippo achievement journey",
@@ -191,7 +191,7 @@ const copy = {
     futureNote: "No airdrops, tokens, cash, yield, or other financial returns are promised.",
     reset: "Reset all progress",
     resetConfirm: "Click again to confirm reset",
-    footer: "BHP represents local educational achievements only. It has no monetary value and cannot be transferred, traded, or redeemed.",
+    footer: "BHC Points represents local educational achievements only. It has no monetary value and cannot be transferred, traded, or redeemed.",
   },
 } as const;
 
@@ -287,7 +287,7 @@ export default function PointsPage() {
             </div>
             <div className="points-hero-badge" aria-hidden="true">
               <div className="points-orbit one" /><div className="points-orbit two" />
-              <span><Trophy size={42} /><strong>{totalPoints}</strong><small>BHP</small></span>
+              <span><Trophy size={42} /><strong>{totalPoints}</strong><small>BHC Points</small></span>
               <i className="b1"><BookOpen size={18} /></i>
               <i className="b2"><Target size={18} /></i>
               <i className="b3"><Landmark size={18} /></i>
@@ -298,10 +298,10 @@ export default function PointsPage() {
             <AlertTriangle size={20} /><strong>{t.disclaimer}</strong>
           </div>
           {isBeginner && <div className="points-container learning-mode-note" data-language-static>
-            <strong>{language === "zh-TW" ? "把 BHP 想成遊戲進度，不是錢。" : "Think of BHP as game progress, not money."}</strong>
+            <strong>{language === "zh-TW" ? "把 BHC Points 想成遊戲進度，不是錢。" : "Think of BHC Points as game progress, not money."}</strong>
             <p>{language === "zh-TW"
-              ? "完成學習與規劃任務，就會累積 BHP 積分。它不是代幣，也不是投資商品，只是幫你看見自己學到哪裡。"
-              : "Complete learning and planning tasks to collect BHP points. They are not tokens or investments—only a way to see your learning progress."}</p>
+              ? "完成學習與規劃任務，就會累積 BHC Points 積分。它不是代幣，也不是投資商品，只是幫你看見自己學到哪裡。"
+              : "Complete learning and planning tasks to collect BHC Points points. They are not tokens or investments—only a way to see your learning progress."}</p>
           </div>}
         </section>
 
@@ -309,7 +309,7 @@ export default function PointsPage() {
           <div className="points-container">
             <div className="points-summary-grid">
               <article className="points-total-card">
-                <span>{t.total}</span><strong>{totalPoints}</strong><small>BHP</small>
+                <span>{t.total}</span><strong>{totalPoints}</strong><small>BHC Points</small>
               </article>
               <article>
                 <span>{t.currentLevel}</span>
@@ -396,7 +396,7 @@ export default function PointsPage() {
                               <strong>{text(achievement.title)}</strong>
                               <p>{text(achievement.description)}</p>
                             </span>
-                            <span className="points-task-points">+{achievement.points} BHP</span>
+                            <span className="points-task-points">+{achievement.points} BHC Points</span>
                           </button>
                           <Link href={achievement.href}>{t.visit} <ChevronRight size={15} /></Link>
                         </article>

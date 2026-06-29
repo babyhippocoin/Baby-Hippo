@@ -11,7 +11,7 @@ const links = [
   { href: "/", en: "Home", zh: "首頁" },
   { href: "/story", en: "Story", zh: "故事" },
   { href: "/learn", en: "Learn", zh: "學習" },
-  { href: "/on-ramp", en: "TWD On-Ramp", zh: "台幣入金" },
+  { href: "/on-ramp", en: "TWD On-Ramp", zh: "台灣入金" },
   { href: "/dca-planner", en: "My Investment Plan", zh: "我的投資計畫" },
   { href: "/earn", en: "Earn", zh: "收益學習" },
   { href: "/community", en: "Community", zh: "社群" },

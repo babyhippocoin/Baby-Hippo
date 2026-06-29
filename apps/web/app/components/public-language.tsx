@@ -877,7 +877,10 @@ export function PublicLanguageSwitcher() {
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         if (mutation.type === "characterData") {
-          replaceText(mutation.target as Text, language, originals.current);
+          const parent = mutation.target.parentElement;
+          if (parent && !parent.closest("[data-language-static]")) {
+            replaceText(mutation.target as Text, language, originals.current);
+          }
         } else {
           mutation.addedNodes.forEach((node) => apply(node));
         }

@@ -1,454 +1,170 @@
 "use client";
 
-import {
-  AlertTriangle,
-  ArrowLeft,
-  ArrowRight,
-  Bitcoin,
-  BookOpen,
-  Check,
-  CircleDollarSign,
-  Coins,
-  KeyRound,
-  Landmark,
-  Layers3,
-  Menu,
-  Route,
-  ShieldCheck,
-  Sprout,
-  X,
-} from "lucide-react";
+import { AlertTriangle, ArrowRight, BookOpen, CheckCircle2, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-import { PublicLanguageSwitcher } from "../components/public-language";
+import { useEffect, useState } from "react";
 import { PublicHeader } from "../components/public-header";
-import {
-  BeginnerGlossary, LearningJourneyQuestion, useLearningMode,
-} from "../components/public-learning-mode";
+import "./learn.css";
 
-const beginnerAnalogies: Record<string, { zh: string; en: string }> = {
-  bitcoin: {
-    zh: "把比特幣想成「數位黃金」：數量有限，有些人用它長期保存價值，但價格仍會大幅波動。",
-    en: "Think of Bitcoin as digital gold: it is scarce and some people use it to store value, but its price can still move sharply.",
-  },
-  ethereum: {
-    zh: "把以太坊想成一座數位城市。開發者可以在城市裡蓋金融工具、遊戲和其他應用。",
-    en: "Think of Ethereum as a digital city where developers can build financial tools, games, and other applications.",
-  },
-  dca: {
-    zh: "就像每月固定買台積電零股，不花力氣猜最低價，而是用固定預算慢慢累積。",
-    en: "It is like buying a small amount of the same stock every month instead of trying to guess the lowest price.",
-  },
-  aave: {
-    zh: "像線上的當鋪與抵押借貸市場：放入加密資產作抵押，可能借出穩定幣；抵押品跌太多時，可能被強制賣出。",
-    en: "It is like an online pawnshop and collateral market: crypto backs a loan, and falling collateral can be forcibly sold.",
-  },
-  etherfi: {
-    zh: "像讓長期持有的 ETH 去工作。ETH 仍是你的長期部位，但可參與質押、可能產生收益，也同時增加風險。",
-    en: "It is like putting long-term ETH to work through staking for potential yield, while adding extra risk.",
-  },
-  risk: {
-    zh: "像開貨車前先看載重、煞車和路況。先想哪裡會出錯，再決定要不要上路。",
-    en: "Like checking truck load, brakes, and road conditions before driving: think about what can go wrong first.",
-  },
-  "seed-phrase": {
-    zh: "助記詞像整個錢包的萬能鑰匙。誰拿到完整助記詞，通常就能拿走裡面的所有資產。",
-    en: "A seed phrase is the master key to the whole wallet. Anyone with it can usually take everything inside.",
-  },
+type Language = "zh-TW" | "en";
+type Copy = { zh: string; en: string };
+type Guide = {
+  symbol: string;
+  name: string;
+  what: Copy;
+  why: Copy;
+  risk: Copy;
+  view: Copy;
 };
 
-const lessons = [
+const LANGUAGE_KEY = "baby-hippo-language";
+
+const guides: Guide[] = [
   {
-    id: "bitcoin",
-    number: "01",
-    icon: Bitcoin,
-    title: "What is Bitcoin?",
-    shortTitle: "Bitcoin",
-    explanation:
-      "Bitcoin is a digital asset and payment network that can move value without a bank controlling the ledger. Its transaction history is recorded by a distributed network of computers.",
-    matters:
-      "Bitcoin introduced the idea that people can hold and transfer a scarce digital asset using an open network. It is often the first concept people meet when learning about crypto.",
-    warning:
-      "Bitcoin’s price can change sharply. Sending it to the wrong address or network may be irreversible. Learning about it does not mean you need to buy it.",
-    cta: "Next: Understand Ethereum",
-    next: "#ethereum",
-    accent: "orange",
+    symbol: "BTC", name: "Bitcoin",
+    what: { zh: "一種供應量有限、由全球電腦共同維護的數位資產。它不由單一公司或政府控制。", en: "A scarce digital asset maintained by a global network rather than one company or government." },
+    why: { zh: "它讓人們能在網路上持有與轉移稀缺資產，也常被視為長期價值儲存的實驗。", en: "It lets people hold and transfer scarce value online and is often explored as a long-term store of value." },
+    risk: { zh: "價格波動很大；保管方式、詐騙與買在情緒高點都是新手常見風險。", en: "Price swings, custody mistakes, scams, and emotional buying are common beginner risks." },
+    view: { zh: "先理解、再小額、固定節奏，不借錢追高。", en: "Learn first, start small, use a steady rhythm, and never borrow money to chase price." },
   },
   {
-    id: "ethereum",
-    number: "02",
-    icon: Layers3,
-    title: "What is Ethereum?",
-    shortTitle: "Ethereum",
-    explanation:
-      "Ethereum is a public blockchain that can run programmable applications called smart contracts. People use it for payments, digital ownership, lending, exchanges, and many other on-chain tools.",
-    matters:
-      "Ethereum makes it possible for applications like Aave and Ether.fi to operate without a traditional company manually approving every action.",
-    warning:
-      "Smart contracts can contain bugs, applications can be misleading, and network fees can vary. Always confirm the website, network, and transaction details.",
-    cta: "Next: Learn the DCA habit",
-    next: "#dca",
-    accent: "blue",
+    symbol: "ETH", name: "Ethereum",
+    what: { zh: "一個能執行智慧合約的公開網路，ETH 是支付網路費用與參與生態系的主要資產。", en: "A public smart-contract network. ETH is the main asset used for network fees and participation." },
+    why: { zh: "許多 DeFi、穩定幣與鏈上應用建立在 Ethereum 及其延伸網路上。", en: "Many DeFi, stablecoin, and on-chain applications are built on Ethereum and its scaling networks." },
+    risk: { zh: "除了價格波動，還有智慧合約、網路費用與操作錯誤風險。", en: "Beyond price volatility, users face smart-contract, network-fee, and operational risks." },
+    view: { zh: "先學會網路、Gas 費與錢包安全，再接觸鏈上應用。", en: "Understand networks, gas fees, and wallet safety before using on-chain applications." },
   },
   {
-    id: "dca",
-    number: "03",
-    icon: Route,
-    title: "What is DCA?",
-    shortTitle: "DCA",
-    explanation:
-      "Dollar-cost averaging, or DCA, means dividing a planned amount into smaller purchases made on a regular schedule instead of trying to choose one perfect moment.",
-    matters:
-      "A schedule can reduce emotional decisions and make a plan easier to follow. It can be useful for people who prefer steady habits over constant chart watching.",
-    warning:
-      "DCA does not guarantee profit and does not make a risky asset safe. Only use money your real-life budget can handle, and review the plan regularly.",
-    cta: "Next: See how Aave works",
-    next: "#aave",
-    accent: "green",
+    symbol: "SOL", name: "Solana",
+    what: { zh: "一個速度快、費用較低的智慧合約網路，SOL 是其主要資產。", en: "A fast, lower-cost smart-contract network whose native asset is SOL." },
+    why: { zh: "它希望讓支付、交易與應用能以較低成本服務更多使用者。", en: "It aims to support payments, markets, and applications at low cost for many users." },
+    risk: { zh: "生態系變化快、代幣波動大，也有平台集中度與技術穩定性風險。", en: "The ecosystem changes quickly and carries volatility, concentration, and technical reliability risks." },
+    view: { zh: "把它視為較高風險的成長型資產，不要因速度快就忽略風險。", en: "Treat it as a higher-risk growth asset; speed does not remove risk." },
   },
   {
-    id: "aave",
-    number: "04",
-    icon: Landmark,
-    title: "What is Aave?",
-    shortTitle: "Aave",
-    explanation:
-      "Aave is a decentralized lending protocol. Users can supply supported assets to earn variable interest, or borrow assets by providing enough collateral.",
-    matters:
-      "Aave is a practical example of DeFi lending. Learning it helps explain collateral, interest rates, Health Factor, and liquidation risk.",
-    warning:
-      "Borrowing can lead to liquidation if collateral value falls or debt grows. Rates change, smart-contract risk exists, and supplied assets are not the same as a bank deposit.",
-    cta: "Next: Understand Ether.fi",
-    next: "#etherfi",
-    accent: "purple",
+    symbol: "LINK", name: "Chainlink",
+    what: { zh: "為智慧合約提供價格與外部資料的基礎設施，LINK 是其生態系資產。", en: "Infrastructure that supplies smart contracts with prices and outside data; LINK is its ecosystem asset." },
+    why: { zh: "鏈上借貸與金融工具需要可信資料，否則無法正確計算價格與風險。", en: "On-chain lending and financial tools need reliable data to calculate prices and risk." },
+    risk: { zh: "技術被廣泛採用不代表代幣價格一定上漲，仍有競爭與估值風險。", en: "Strong technology adoption does not guarantee token appreciation; competition and valuation risks remain." },
+    view: { zh: "先理解它解決的問題，不要只因合作新聞買入。", en: "Understand the problem it solves instead of buying only because of partnership headlines." },
   },
   {
-    id: "etherfi",
-    number: "05",
-    icon: Sprout,
-    title: "What is Ether.fi?",
-    shortTitle: "Ether.fi",
-    explanation:
-      "Ether.fi is a staking and restaking protocol built around Ethereum. It offers liquid receipt assets, including eETH and weETH, that represent a user’s position in the protocol.",
-    matters:
-      "It shows how one on-chain asset can represent another position and continue moving through DeFi. Understanding this helps beginners recognize layered protocols and additional risk.",
-    warning:
-      "Restaking adds complexity. Risks may include smart contracts, validators, changing exchange rates, liquidity, integrations, and the protocols underneath the position.",
-    cta: "Next: Build a risk mindset",
-    next: "#risk",
-    accent: "teal",
+    symbol: "BNB", name: "BNB",
+    what: { zh: "與 BNB Chain 和 Binance 生態系密切相關的資產，可用於網路費用與多種平台用途。", en: "An asset closely connected to BNB Chain and the Binance ecosystem, used for fees and platform utilities." },
+    why: { zh: "它支援大型交易與鏈上生態系中的費用、應用與使用者活動。", en: "It supports fees, applications, and user activity across a large exchange and on-chain ecosystem." },
+    risk: { zh: "價值與單一企業及生態系高度相關，也有監管與集中度風險。", en: "Its value is closely tied to one company and ecosystem, creating regulatory and concentration risks." },
+    view: { zh: "理解集中風險，避免把單一平台資產當成無風險核心。", en: "Understand concentration risk and do not treat a single-platform asset as risk-free." },
   },
   {
-    id: "risk",
-    number: "06",
-    icon: ShieldCheck,
-    title: "What is Risk Management?",
-    shortTitle: "Risk Management",
-    explanation:
-      "Risk management means deciding what could go wrong before taking action, limiting how much one mistake can hurt, and keeping enough flexibility to respond.",
-    matters:
-      "On-chain actions can be fast and irreversible. Good habits—small test amounts, diversification, Health Factor monitoring, and careful approvals—can reduce preventable harm.",
-    warning:
-      "No checklist removes every risk. Avoid leverage you do not understand, promises of unusually high returns, urgent messages, and positions too large for your real-life finances.",
-    cta: "Next: Protect your seed phrase",
-    next: "#seed-phrase",
-    accent: "amber",
+    symbol: "HYP", name: "Hyperliquid",
+    what: { zh: "與 Hyperliquid 鏈上交易生態相關的資產，著重高效能市場基礎設施。", en: "An asset connected to Hyperliquid's on-chain market ecosystem and high-performance infrastructure." },
+    why: { zh: "它探索如何把更快速的市場工具搬到公開鏈上。", en: "It explores how faster market infrastructure can operate on public blockchain rails." },
+    risk: { zh: "屬於較新且波動高的生態系，產品、治理、流動性與技術風險都較高。", en: "It is a newer, volatile ecosystem with elevated product, governance, liquidity, and technical risks." },
+    view: { zh: "只適合已理解核心資產與風險管理的人進一步研究。", en: "Best researched only after understanding core assets and basic risk management." },
   },
   {
-    id: "seed-phrase",
-    number: "07",
-    icon: KeyRound,
-    title: "What is a Seed Phrase?",
-    shortTitle: "Seed Phrase",
-    explanation:
-      "A seed phrase is a set of recovery words that can recreate access to a crypto wallet. Anyone who has the complete phrase can usually control the wallet and its assets.",
-    matters:
-      "It is the master backup for many self-custody wallets. Protecting it is more important than protecting a username or ordinary password.",
-    warning:
-      "Never type it into a website, send it in a message, save it in cloud notes, or share it with support staff. Baby Hippo and legitimate moderators will never ask for it.",
-    cta: "Continue with the community",
-    next: "/community",
-    accent: "red",
+    symbol: "TAO", name: "Bittensor",
+    what: { zh: "一個鼓勵不同 AI 模型與服務協作競爭的去中心化網路，TAO 是其資產。", en: "A decentralized network that rewards competing and collaborating AI models and services; TAO is its asset." },
+    why: { zh: "它嘗試用開放式激勵機制建立可共享的 AI 網路。", en: "It experiments with open incentives for building a shared artificial-intelligence network." },
+    risk: { zh: "概念複雜、估值高度依賴未來採用，且價格可能劇烈波動。", en: "The concept is complex, valuation depends heavily on future adoption, and price can move sharply." },
+    view: { zh: "把它當成進階研究題目，不要把 AI 熱潮當成獲利保證。", en: "Treat it as advanced research; AI excitement is not a profit guarantee." },
+  },
+  {
+    symbol: "IO", name: "io.net",
+    what: { zh: "嘗試整合分散式 GPU 運算資源、服務 AI 與機器學習需求的網路。", en: "A network seeking to aggregate distributed GPU computing for AI and machine-learning workloads." },
+    why: { zh: "AI 運算成本高，它希望讓閒置硬體能被更有效地找到與使用。", en: "AI compute is expensive, and the network aims to make unused hardware easier to find and use." },
+    risk: { zh: "需求、供給品質、代幣經濟與競爭都仍在快速變化。", en: "Demand, supply quality, token economics, and competition are still evolving quickly." },
+    view: { zh: "先研究真實使用量與供需，不因 AI 標籤而忽略基本面。", en: "Research real usage and supply-demand conditions rather than relying on an AI label." },
+  },
+  {
+    symbol: "DOGE", name: "Dogecoin",
+    what: { zh: "源自網路迷因、由社群推動的加密資產，交易與轉帳方式類似其他公開鏈資產。", en: "A community-driven crypto asset that began as an internet meme and operates on a public network." },
+    why: { zh: "它展示社群文化也能形成大型網路，但用途與價格常受到情緒影響。", en: "It shows how community culture can create a large network, though sentiment strongly affects its use and price." },
+    risk: { zh: "波動與投機性很高，社群熱度不等於長期價值。", en: "Volatility and speculation are high; community attention does not equal lasting value." },
+    view: { zh: "若要接觸，只能使用可承受損失的小額資金，不把迷因當理財計畫。", en: "If explored at all, use only a small amount you can lose and never treat a meme as a financial plan." },
   },
 ];
 
-function BrandMark() {
-  return (
-    <span className="learn-brand-mark" aria-hidden="true">
-      <i className="learn-ear left" />
-      <i className="learn-ear right" />
-      <i className="learn-glasses left" />
-      <i className="learn-glasses right" />
-      <i className="learn-nostril left" />
-      <i className="learn-nostril right" />
-    </span>
-  );
-}
-
-function LearnHeader() {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <header className="learn-header">
-      <div className="learn-container learn-header-inner">
-        <Link className="learn-logo" href="/" aria-label="Baby Hippo homepage">
-          <BrandMark />
-          <span>
-            <strong>Baby Hippo</strong>
-            <small>Beginner Learning Hub</small>
-          </span>
-        </Link>
-
-        <nav className="learn-desktop-nav" aria-label="Learning hub navigation">
-          <a href="#lessons">Lessons</a>
-          <a href="#learning-path">Learning Path</a>
-          <Link href="/community">Community</Link>
-          <Link href="/dashboard">Lobster Watch</Link>
-        </nav>
-
-        <div className="learn-header-actions">
-          <PublicLanguageSwitcher />
-          <a className="learn-button primary compact" href="#lessons">
-            Start Learning
-          </a>
-          <button
-            className="learn-menu-button"
-            type="button"
-            aria-label={open ? "Close menu" : "Open menu"}
-            aria-expanded={open}
-            aria-controls="learn-mobile-menu"
-            onClick={() => setOpen((value) => !value)}
-          >
-            {open ? <X size={21} /> : <Menu size={21} />}
-          </button>
-        </div>
-      </div>
-
-      <nav
-        id="learn-mobile-menu"
-        className={`learn-mobile-menu ${open ? "open" : ""}`}
-        aria-label="Mobile learning navigation"
-      >
-        <a href="#lessons" onClick={() => setOpen(false)}>Lessons</a>
-        <a href="#learning-path" onClick={() => setOpen(false)}>Learning Path</a>
-        <Link href="/community" onClick={() => setOpen(false)}>Community</Link>
-        <Link href="/" onClick={() => setOpen(false)}>Back to Homepage</Link>
-      </nav>
-    </header>
-  );
+function text(copy: Copy, language: Language) {
+  return language === "zh-TW" ? copy.zh : copy.en;
 }
 
 export default function LearnPage() {
-  const { isBeginner, language } = useLearningMode();
-  const visibleLessons = isBeginner ? lessons.filter((lesson) => lesson.id !== "aave") : lessons;
+  const [language, setLanguage] = useState<Language>("zh-TW");
+
+  useEffect(() => {
+    const sync = () => setLanguage(localStorage.getItem(LANGUAGE_KEY) === "en" ? "en" : "zh-TW");
+    sync();
+    window.addEventListener("storage", sync);
+    window.addEventListener("baby-hippo-language-change", sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("baby-hippo-language-change", sync);
+    };
+  }, []);
+
+  const isZh = language === "zh-TW";
+
   return (
-    <div className="learn-site">
+    <div className="learn-site asset-learn-site">
       <PublicHeader />
-
       <main>
-        <section className="learn-hero">
-          <div className="learn-container learn-hero-grid">
-            <div className="learn-hero-copy">
-              <Link className="learn-back-link" href="/">
-                <ArrowLeft size={15} /> Baby Hippo Homepage
-              </Link>
-              <span className="learn-eyebrow">Hippo Academy · Beginner path</span>
-              <h1>Learn the basics. Protect your future.</h1>
-              <p className="learn-hero-zh">Understand first, then act. Build knowledge one step at a time.</p>
-              <p className="learn-lead">
-                Seven short lessons explain the ideas behind Bitcoin, Ethereum, DeFi, and wallet
-                safety in everyday language. No wallet connection. No pressure to buy anything.
-              </p>
-              <div className="learn-cta-row">
-                <a className="learn-button primary" href="#bitcoin">
-                  Begin with Bitcoin <ArrowRight size={17} />
-                </a>
-                <a className="learn-button secondary" href="#learning-path">
-                  <BookOpen size={17} /> View learning path
-                </a>
-              </div>
-              <div className="learn-trust-note">
-                <ShieldCheck size={17} />
-                <span>Education only. Every lesson includes a beginner warning.</span>
-              </div>
-            </div>
-
-            <div className="learn-hero-art" aria-hidden="true">
-              <div className="learn-sun" />
-              <div className="learn-mountain back" />
-              <div className="learn-mountain front" />
-              <div className="learn-road" />
-              <div className="learn-book">
-                <BookOpen size={52} />
-                <span className="learn-book-node one" />
-                <span className="learn-book-node two" />
-                <span className="learn-book-node three" />
-              </div>
-              <div className="learn-art-caption">
-                <Sprout size={19} />
-                <span><strong>Knowledge compounds</strong>One clear lesson at a time</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <LearningJourneyQuestion compact />
-
-        {isBeginner && (
-          <section className="learn-path-section" data-language-static>
-            <div className="learn-container">
-              <div className="learn-section-heading">
-                <span className="learn-eyebrow">{language === "zh-TW" ? "先從生活問題開始" : "Start with a real-life question"}</span>
-                <h2>{language === "zh-TW" ? "你現在最想解決什麼？" : "What do you want to solve first?"}</h2>
-                <p>{language === "zh-TW" ? "不用先記專有名詞。選擇你的問題，再認識對應工具。" : "You do not need jargon first. Start with your problem, then learn the matching idea."}</p>
-              </div>
-              <div className="beginner-concept-grid">
-                {[
-                  ["我想開始投資", "I want to start investing", "Bitcoin：先看懂數位黃金與價格風險。", "Bitcoin: understand digital gold and price risk first.", "#bitcoin"],
-                  ["我想定期定額", "I want a regular plan", "DCA：像每月固定買零股，降低猜價格的壓力。", "DCA: like buying a small amount monthly to reduce timing pressure.", "#dca"],
-                  ["我想增加被動收入", "I want passive income", "Ether.fi：先學 ETH 如何參與質押，再談收益。", "Ether.fi: learn how ETH staking works before thinking about yield.", "#etherfi"],
-                  ["我想避免被詐騙", "I want to avoid scams", "錢包安全：先保護助記詞，再學任何鏈上工具。", "Wallet safety: protect the seed phrase before using on-chain tools.", "#seed-phrase"],
-                  ["我想學習鏈上借貸", "I want on-chain lending", "先完成比特幣、定投與被動收入基礎，再解鎖 Aave。", "Complete Bitcoin, DCA, and passive-income basics before unlocking Aave.", "/#start-journey"],
-                ].map(([zhTitle, enTitle, zhText, enText, href]) => (
-                  <article key={href}><h3>{language === "zh-TW" ? zhTitle : enTitle}</h3>
-                    <p>{language === "zh-TW" ? zhText : enText}</p>
-                    <a href={href}>{language === "zh-TW" ? "前往這一課" : "Go to this lesson"} <ArrowRight size={14} /></a>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        <section className="learn-path-section" id="learning-path">
+        <section className="asset-learn-hero">
           <div className="learn-container">
-            <div className="learn-section-heading centered">
-              <span className="learn-eyebrow">Your learning road</span>
-              <h2>Seven stops. One safer foundation.</h2>
-              <p>Read in order or begin with the question you have today.</p>
+            <span className="learn-eyebrow">{isZh ? "Baby Hippo 學習專區" : "Baby Hippo Learning Hub"}</span>
+            <h1>{isZh ? "先理解，再行動。" : "Understand first. Act second."}</h1>
+            <p>
+              {isZh
+                ? "用一般人聽得懂的方式認識常見資產。每一篇都說明它是什麼、為什麼存在、主要風險，以及 Baby Hippo 的紀律觀點。"
+                : "Meet common digital assets in plain language. Every guide explains what it is, why it exists, its main risks, and Baby Hippo's discipline-first view."}
+            </p>
+            <div className="asset-learn-principle">
+              <ShieldCheck size={22} />
+              <span>{isZh ? "學習不是買入建議。生活必需金與緊急預備金永遠優先。" : "Learning is not a buy recommendation. Essential expenses and emergency cash always come first."}</span>
             </div>
-            <nav className="learn-path" aria-label="Lesson shortcuts">
-              {visibleLessons.map(({ id, number, shortTitle, icon: Icon }) => (
-                <a href={`#${id}`} key={id}>
-                  <span><Icon size={17} /></span>
-                  <small>{number}</small>
-                  <strong>{shortTitle}</strong>
-                </a>
-              ))}
-            </nav>
           </div>
         </section>
 
-        <section className="learn-lessons" id="lessons">
+        <section className="asset-guide-section">
           <div className="learn-container">
             <div className="learn-section-heading">
-              <span className="learn-eyebrow">Beginner lessons</span>
-              <h2>Plain language, practical warnings.</h2>
-              <p>
-                These explanations are a starting point—not financial advice or a substitute for
-                checking current documentation before using a protocol.
-              </p>
+              <span className="learn-eyebrow">{isZh ? "九個資產新手指南" : "Nine beginner asset guides"}</span>
+              <h2>{isZh ? "知道自己在研究什麼" : "Know what you are researching"}</h2>
+              <p>{isZh ? "不要因為別人喊單就行動。先看懂用途、限制與風險。" : "Do not act because someone posted a signal. Understand purpose, limits, and risk first."}</p>
             </div>
-
-            <div className="learn-lesson-list">
-              {visibleLessons.map((lesson) => {
-                const Icon = lesson.icon;
-                const isInternalRoute = lesson.next.startsWith("/");
-                const ctaContent = <>{lesson.cta} <ArrowRight size={16} /></>;
-
-                return (
-                  <article className={`learn-lesson-card ${lesson.accent}`} id={lesson.id} key={lesson.id}>
-                    <div className="learn-lesson-header">
-                      <span className="learn-lesson-icon"><Icon size={26} /></span>
-                      <div>
-                        <small>Lesson {lesson.number}</small>
-                        <h2>{lesson.title}</h2>
-                      </div>
-                    </div>
-
-                    <div className="learn-lesson-content">
-                      {isBeginner && <section className="learning-mode-note" data-language-static>
-                        <strong>{language === "zh-TW" ? "生活比喻" : "Everyday analogy"}</strong>
-                        <p>{language === "zh-TW" ? beginnerAnalogies[lesson.id].zh : beginnerAnalogies[lesson.id].en}</p>
-                      </section>}
-                      <section>
-                        <span className="learn-content-label">
-                          <BookOpen size={15} /> Simple explanation
-                        </span>
-                        <p>{lesson.explanation}</p>
-                      </section>
-                      <section>
-                        <span className="learn-content-label">
-                          <CircleDollarSign size={15} /> Why it matters
-                        </span>
-                        <p>{lesson.matters}</p>
-                      </section>
-                    </div>
-
-                    <div className="learn-warning">
-                      <AlertTriangle size={19} />
-                      <div>
-                        <strong>Beginner warning</strong>
-                        <p>{lesson.warning}</p>
-                      </div>
-                    </div>
-
-                    <div className="learn-lesson-footer">
-                      <span><Check size={14} /> Read slowly. Verify before acting.</span>
-                      {isInternalRoute ? (
-                        <Link className="learn-next-link" href={lesson.next}>{ctaContent}</Link>
-                      ) : (
-                        <a className="learn-next-link" href={lesson.next}>{ctaContent}</a>
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
+            <div className="asset-guide-grid">
+              {guides.map((guide) => (
+                <article className="asset-guide-card" id={guide.symbol.toLowerCase()} key={guide.symbol}>
+                  <header>
+                    <span>{guide.symbol}</span>
+                    <div><small>{isZh ? "新手指南" : "Beginner guide"}</small><h2>{guide.name}</h2></div>
+                  </header>
+                  <section><h3>{isZh ? "是什麼" : "What it is"}</h3><p>{text(guide.what, language)}</p></section>
+                  <section><h3>{isZh ? "為什麼存在" : "Why it exists"}</h3><p>{text(guide.why, language)}</p></section>
+                  <section className="asset-risk"><h3><AlertTriangle size={17} /> {isZh ? "主要風險" : "Main risks"}</h3><p>{text(guide.risk, language)}</p></section>
+                  <section className="asset-view"><h3><BookOpen size={17} /> {isZh ? "Baby Hippo 看法" : "Baby Hippo view"}</h3><p>{text(guide.view, language)}</p></section>
+                </article>
+              ))}
             </div>
           </div>
         </section>
 
-        {isBeginner && <BeginnerGlossary />}
-
-        <section className="learn-finish">
-          <div className="learn-container learn-finish-card">
-            <div className="learn-finish-icon"><Coins size={30} /></div>
-            <span className="learn-eyebrow">Your next responsible step</span>
-            <h2>Keep learning before you add complexity.</h2>
-            <p>
-              Ask questions, revisit the warnings, and use read-only tools before considering any
-              irreversible on-chain action.
-            </p>
-            <div className="learn-cta-row">
-              <Link className="learn-button primary" href="/community">
-                Join Baby Hippo Community <ArrowRight size={17} />
+        <section className="asset-learn-next">
+          <div className="learn-container">
+            <div className="asset-next-card">
+              <CheckCircle2 size={32} />
+              <div>
+                <span className="learn-eyebrow">{isZh ? "下一步" : "Next step"}</span>
+                <h2>{isZh ? "把理解變成穩定習慣" : "Turn understanding into a steady habit"}</h2>
+                <p>{isZh ? "Lobster Watch 目前正式開放 DCA 提醒。它只提醒與記錄，不會替你交易。" : "Lobster Watch currently offers DCA reminders. It reminds and records; it never trades for you."}</p>
+              </div>
+              <Link href="/dashboard" className="learn-button primary">
+                {isZh ? "建立定投提醒" : "Create a DCA reminder"} <ArrowRight size={17} />
               </Link>
-              <Link className="learn-button secondary" href="/dashboard">
-                <ShieldCheck size={17} /> View My On-Chain Boss Progress
-              </Link>
-            </div>
-            <div className="learn-final-safety">
-              <KeyRound size={17} />
-              <span>Baby Hippo will never ask for your seed phrase or private key.</span>
             </div>
           </div>
         </section>
       </main>
-
-      <footer className="learn-footer">
-        <div className="learn-container learn-footer-inner">
-          <Link className="learn-logo" href="/">
-            <BrandMark />
-            <span><strong>Baby Hippo</strong><small>From Worker To On-Chain Boss</small></span>
-          </Link>
-          <div>
-            <Link href="/">Homepage</Link>
-            <Link href="/community">Community</Link>
-            <Link href="/dashboard">Lobster Watch</Link>
-          </div>
-          <p>Education first. Risk management first. No guaranteed financial outcomes.</p>
-        </div>
-      </footer>
     </div>
   );
 }

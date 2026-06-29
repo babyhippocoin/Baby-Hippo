@@ -158,9 +158,9 @@ const copy = {
     warningEmergency: "絕不使用緊急預備金投資",
     platforms: "支援平台", platformsLead: "Binance、OKX 與 Ether.fi 為合作推薦連結；Aave 僅提供教育資訊。平台規則與地區限制可能變動，請自行確認。",
     comingSoon: "即將推出", educationOnly: "教育內容",
-    readyAchievement: "準備開始執行", readyEarned: "已取得 +10 BHP",
-    readyPending: "閱讀本區後可取得 +10 BHP 教育成就積分",
-    savePlan: "儲存我的第一份定投計畫", planSaved: "已建立計畫・+5 BHP",
+    readyAchievement: "準備開始執行", readyEarned: "已取得 +10 BHC Points",
+    readyPending: "閱讀本區後可取得 +10 BHC Points 教育成就積分",
+    savePlan: "儲存我的第一份定投計畫", planSaved: "已建立計畫・+5 BHC Points",
     planCreatedMessage: "你已建立計畫，但還沒有開始執行。",
     nextExchange: "下一步：選擇交易所",
     exchangeSelectedMessage: "你已選擇交易所。接下來請在交易所建立定期定額。",
@@ -169,7 +169,7 @@ const copy = {
     checkAsset: "我已選擇 BTC 或 ETH", checkAmount: "我已設定固定金額",
     checkRisk: "我了解這不是保證獲利", checkCash: "我沒有使用生活必需金",
     checkNoLeverage: "我沒有使用合約或槓桿",
-    submitDca: "提交我的 DCA 承諾", dcaReported: "已提交定投承諾・+20 BHP",
+    submitDca: "提交我的 DCA 承諾", dcaReported: "已提交定投承諾・+20 BHC Points",
     dcaReportedMessage: "你已回報開始定投。Baby Hippo 目前不會讀取你的交易所資料，請保持紀律。",
     unverified: "未驗證的自我回報", leverageWarning: "如果你只是入金打合約，這不算 DCA。",
     proofTitle: "我的 DCA 行動進度", noPlan: "尚未建立計畫", planCreated: "已建立計畫",
@@ -254,9 +254,9 @@ const copy = {
     warningEmergency: "Never invest emergency funds",
     platforms: "Supported Platforms", platformsLead: "Binance, OKX, and Ether.fi are partner referral links. Aave is educational only. Platform rules and regional restrictions may change, so verify them yourself.",
     comingSoon: "Coming soon", educationOnly: "Educational",
-    readyAchievement: "Ready To Execute", readyEarned: "+10 BHP earned",
-    readyPending: "View this section to earn the +10 BHP educational achievement",
-    savePlan: "Save My First DCA Plan", planSaved: "Plan Created · +5 BHP",
+    readyAchievement: "Ready To Execute", readyEarned: "+10 BHC Points earned",
+    readyPending: "View this section to earn the +10 BHC Points educational achievement",
+    savePlan: "Save My First DCA Plan", planSaved: "Plan Created · +5 BHC Points",
     planCreatedMessage: "You created a plan, but you have not started executing it yet.",
     nextExchange: "Next: Choose an exchange",
     exchangeSelectedMessage: "You selected an exchange. Next, create a recurring DCA plan on that exchange.",
@@ -265,7 +265,7 @@ const copy = {
     checkAsset: "I selected BTC or ETH", checkAmount: "I set a fixed amount",
     checkRisk: "I understand profit is not guaranteed", checkCash: "I did not use essential living money",
     checkNoLeverage: "I did not use futures or leverage",
-    submitDca: "Submit My DCA Commitment", dcaReported: "DCA Commitment Submitted · +20 BHP",
+    submitDca: "Submit My DCA Commitment", dcaReported: "DCA Commitment Submitted · +20 BHC Points",
     dcaReportedMessage: "You reported starting DCA. Baby Hippo does not read your exchange data, so please stay disciplined.",
     unverified: "Unverified self-report", leverageWarning: "Depositing money to trade futures does not count as DCA.",
     proofTitle: "My DCA action progress", noPlan: "No plan created", planCreated: "Plan Created",
@@ -812,11 +812,11 @@ export default function DcaPlannerPage() {
                 <h2>{t.proofTitle}</h2></div><Award size={23} /></div>
               <div className="planner-v2-proof-levels">
                 {[
-                  [t.planCreated, planAwarded, "+5 BHP"],
-                  [language === "zh-TW" ? "已閱讀 DCA 指南" : "DCA Guide Read", dcaGuideRead, "+10 BHP"],
-                  [t.exchangeSelected, exchangeSelected, "+5 BHP"],
-                  [t.startedReported, dcaStarted, "+20 BHP"],
-                  [language === "zh-TW" ? "已驗證習慣里程碑" : "Verified Habit Milestone", false, "+50 BHP"],
+                  [t.planCreated, planAwarded, "+5 BHC Points"],
+                  [language === "zh-TW" ? "已閱讀 DCA 指南" : "DCA Guide Read", dcaGuideRead, "+10 BHC Points"],
+                  [t.exchangeSelected, exchangeSelected, "+5 BHC Points"],
+                  [t.startedReported, dcaStarted, "+20 BHC Points"],
+                  [language === "zh-TW" ? "已驗證習慣里程碑" : "Verified Habit Milestone", false, "+50 BHC Points"],
                 ].map(([label, done, points], index) => (
                   <div className={done ? "active" : ""} key={String(label)}>
                     <span>{done ? <Check size={14} /> : index + 1}</span>
@@ -1118,8 +1118,8 @@ export default function DcaPlannerPage() {
             </div>
             <button type="button" className="planner-v2-read-guide" onClick={completeDcaGuide} disabled={dcaGuideRead}>
               {dcaGuideRead
-                ? (language === "zh-TW" ? "已閱讀 DCA 指南・+10 BHP" : "DCA Guide Read · +10 BHP")
-                : (language === "zh-TW" ? "我已閱讀並理解 DCA 指南・+10 BHP" : "I read and understood the DCA Guide · +10 BHP")}
+                ? (language === "zh-TW" ? "已閱讀 DCA 指南・+10 BHC Points" : "DCA Guide Read · +10 BHC Points")
+                : (language === "zh-TW" ? "我已閱讀並理解 DCA 指南・+10 BHC Points" : "I read and understood the DCA Guide · +10 BHC Points")}
             </button>
           </div>
         </section>

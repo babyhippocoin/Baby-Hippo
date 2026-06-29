@@ -378,12 +378,12 @@ export default function TaiwanOnRampPage() {
               <Link href="/dca-planner" className="ramp-button primary">{zh ? "下一步：建立我的 DCA 計畫" : "Next: Build My DCA Plan"} <ArrowRight size={17} /></Link>
               <button type="button" className={`ramp-button secondary ${completed ? "completed" : ""}`} onClick={completeGuide} disabled={completed}>
                 {completed ? <Check size={17} /> : <BookOpen size={17} />}
-                {completed ? (zh ? "已閱讀・+10 BHP" : "Guide Completed · +10 BHP") : (zh ? "完成閱讀・+10 BHP" : "Complete Guide · +10 BHP")}
+                {completed ? (zh ? "已閱讀・+10 BHC Points" : "Guide Completed · +10 BHC Points") : (zh ? "完成閱讀・+10 BHC Points" : "Complete Guide · +10 BHC Points")}
               </button>
             </div>
             <small>{zh
-              ? "BHP 只記錄教育進度。入金、買幣或轉帳不會獲得積分，也不會要求上傳證明。"
-              : "BHP records education only. Deposits, purchases, and transfers do not earn points, and no proof is requested."}</small>
+              ? "BHC Points 只記錄教育進度。入金、買幣或轉帳不會獲得積分，也不會要求上傳證明。"
+              : "BHC Points records education only. Deposits, purchases, and transfers do not earn points, and no proof is requested."}</small>
           </div>
         </section>
       </main>

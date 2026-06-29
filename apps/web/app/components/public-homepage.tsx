@@ -279,7 +279,7 @@ function MyJourney() {
             </div>
             <div className="public-journey-points">
               <Award size={19} />
-              <strong>{ready ? totalPoints : 0} BHP</strong>
+              <strong>{ready ? totalPoints : 0} BHC Points</strong>
               <span>{t.points}</span>
             </div>
           </div>
@@ -318,7 +318,7 @@ function MyJourney() {
                     aria-label={`${isComplete ? t.completed : t.markComplete}: ${language === "zh-TW" ? task.zh : task.en}`}>
                     <span>{isComplete ? <Check size={18} /> : <Icon size={18} />}</span>
                     <strong>{language === "zh-TW" ? task.zh : task.en}</strong>
-                    <small>+{task.points} BHP</small>
+                    <small>+{task.points} BHC Points</small>
                   </button>
                   <Link href={task.href} aria-label={`${language === "zh-TW" ? task.actionZh : task.actionEn}: ${language === "zh-TW" ? task.zh : task.en}`}>
                     <ChevronRight size={17} />
