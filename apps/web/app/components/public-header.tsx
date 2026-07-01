@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Home, Menu, X } from "lucide-react";
+import { ChevronRight, Home, Menu, Send, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -17,6 +17,11 @@ const links = [
   { href: "/community", en: "Community", zh: "社群" },
   { href: "/points", en: "Points", zh: "成就積分" },
 ] as const;
+
+const socialLinks = {
+  x: "https://x.com/BabyHippoBHC",
+  telegram: "https://t.me/BabyHippoBHC",
+} as const;
 
 function SharedBrandMark() {
   return (
@@ -46,6 +51,8 @@ export function PublicHeader() {
     return () => window.removeEventListener("baby-hippo-language-change", updateLanguage);
   }, []);
 
+  const currentPage = links.find((link) => link.href === pathname);
+
   return (
     <header className="unified-public-header" data-language-static>
       <div className="unified-public-inner">
@@ -74,6 +81,12 @@ export function PublicHeader() {
         </nav>
 
         <div className="unified-public-actions">
+          <a className="unified-social-icon" href={socialLinks.x} target="_blank" rel="noreferrer" aria-label="Official X">
+            <X size={16} />
+          </a>
+          <a className="unified-social-icon" href={socialLinks.telegram} target="_blank" rel="noreferrer" aria-label="Official Telegram">
+            <Send size={16} />
+          </a>
           <PublicLanguageSwitcher />
           <button
             className="unified-public-menu-button"
@@ -94,9 +107,7 @@ export function PublicHeader() {
         <nav className="unified-public-breadcrumb" aria-label={language === "zh-TW" ? "麵包屑導覽" : "Breadcrumb"}>
           <Link href="/"><Home size={14} /> {language === "zh-TW" ? "首頁" : "Home"}</Link>
           <ChevronRight size={13} />
-          <strong>{language === "zh-TW"
-            ? links.find((link) => link.href === pathname)?.zh
-            : links.find((link) => link.href === pathname)?.en}</strong>
+          <strong>{language === "zh-TW" ? currentPage?.zh : currentPage?.en}</strong>
         </nav>
       )}
 
@@ -119,6 +130,12 @@ export function PublicHeader() {
             </Link>
           );
         })}
+        <a href={socialLinks.x} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}>
+          <X size={15} /> Official X
+        </a>
+        <a href={socialLinks.telegram} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}>
+          <Send size={15} /> Official Telegram
+        </a>
       </nav>
     </header>
   );

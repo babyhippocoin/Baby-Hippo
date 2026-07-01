@@ -3,7 +3,7 @@
 import {
   ArrowRight, Award, Bitcoin, BookOpen, BriefcaseBusiness, CalendarCheck, Check,
   ChevronRight, GraduationCap, HeartHandshake, Landmark, Menu, Mountain, Music2,
-  Mail, MessageCircle, Route, ShieldCheck, Sprout, Store, Truck, Users, X,
+  Mail, MessageCircle, Route, Send, ShieldCheck, Sprout, Store, Truck, Users, X,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -28,6 +28,11 @@ type JourneyTask = {
 
 const LANGUAGE_KEY = "baby-hippo-language";
 const POINTS_STORAGE_KEY = "baby-hippo-points-mvp";
+const SOCIAL_LINKS = {
+  x: "https://x.com/BabyHippoBHC",
+  telegram: "https://t.me/BabyHippoBHC",
+  email: "mailto:babyhippocoin@gmail.com",
+} as const;
 
 const journeyTasks: JourneyTask[] = [
   {
@@ -179,6 +184,32 @@ function SectionHeading({ eyebrow, title, text, centered = false }: {
   return (
     <div className={`public-section-heading ${centered ? "centered" : ""}`}>
       <span>{eyebrow}</span><h2>{title}</h2>{text && <p>{text}</p>}
+    </div>
+  );
+}
+
+function HomepageSocialLinks({ compact = false }: { compact?: boolean }) {
+  const [language, setLanguage] = useState<Language>("zh-TW");
+
+  useEffect(() => {
+    setLanguage(window.localStorage.getItem(LANGUAGE_KEY) === "en" ? "en" : "zh-TW");
+    const updateLanguage = (event: Event) => {
+      const next = (event as CustomEvent<Language>).detail;
+      if (next === "zh-TW" || next === "en") setLanguage(next);
+    };
+    window.addEventListener("baby-hippo-language-change", updateLanguage);
+    return () => window.removeEventListener("baby-hippo-language-change", updateLanguage);
+  }, []);
+
+  const text = language === "zh-TW"
+    ? { intro: "加入我們的社群。", x: "Follow on X", telegram: "Join Telegram" }
+    : { intro: "Join our community.", x: "Follow on X", telegram: "Join Telegram" };
+
+  return (
+    <div className={`public-social-cta ${compact ? "compact" : ""}`} data-language-static>
+      <span>{text.intro}</span>
+      <a href={SOCIAL_LINKS.x} target="_blank" rel="noreferrer"><X size={16} /> {text.x}</a>
+      <a href={SOCIAL_LINKS.telegram} target="_blank" rel="noreferrer"><Send size={16} /> {text.telegram}</a>
     </div>
   );
 }
@@ -354,6 +385,7 @@ export default function PublicHomepage() {
                 <a className="public-button primary" href="#start-journey">Start My Baby Hippo Journey <ArrowRight size={17} /></a>
                 <Link className="public-button secondary" href="/learn#bitcoin"><BookOpen size={17} /> Read Bitcoin Guide</Link>
               </div>
+              <HomepageSocialLinks compact />
               <div className="public-trust-line"><ShieldCheck size={17} /><span>Education first. Risk management first. No promises of easy money.</span></div>
             </div>
             <HeroArtwork />
@@ -468,9 +500,22 @@ export default function PublicHomepage() {
             <SectionHeading eyebrow="Founder communication" title="A real project should be reachable."
               text="Official community channels are being prepared. Until then, use these email addresses for project and founder communication." />
             <div className="public-contact-grid">
-              <a href="mailto:hello@babyhippo.community"><Mail size={22} /><span><small>Official Email</small><strong>hello@babyhippo.community</strong></span></a>
-              <a href="mailto:founder@babyhippo.community"><Mail size={22} /><span><small>Founder Email</small><strong>founder@babyhippo.community</strong></span></a>
-              <div><MessageCircle size={22} /><span><small>Social Links</small><strong>X · Coming Soon</strong><strong>Telegram · Coming Soon</strong></span></div>
+              <a href={SOCIAL_LINKS.email} target="_blank" rel="noreferrer">
+                <Mail size={22} />
+                <span><small>Official Email</small><strong>babyhippocoin@gmail.com</strong><b>Send Email</b></span>
+              </a>
+              <a href={SOCIAL_LINKS.telegram} target="_blank" rel="noreferrer">
+                <Send size={22} />
+                <span>
+                  <small>Official Telegram</small>
+                  <strong>https://t.me/BabyHippoBHC</strong>
+                  <b>Join Telegram</b>
+                </span>
+              </a>
+              <a href={SOCIAL_LINKS.x} target="_blank" rel="noreferrer">
+                <MessageCircle size={22} />
+                <span><small>Official X</small><strong>https://x.com/BabyHippoBHC</strong><b>Follow on X</b></span>
+              </a>
             </div>
           </div>
         </section>
@@ -482,6 +527,7 @@ export default function PublicHomepage() {
             <p>Built for everyone working hard to improve life.</p></div>
           <div><strong>Explore</strong><a href="#story">Our Story</a><a href="#products">Products</a><a href="#stories">Hippo Stories</a></div>
           <div><strong>Learn</strong><a href="#learn">First Lesson</a><Link href="/dashboard">Lobster Watch</Link><a href="#values">Our Values</a></div>
+          <div><strong>Follow Baby Hippo</strong><a href={SOCIAL_LINKS.x} target="_blank" rel="noreferrer">Follow us on X</a><a href={SOCIAL_LINKS.telegram} target="_blank" rel="noreferrer">Join Telegram</a><a href={SOCIAL_LINKS.email} target="_blank" rel="noreferrer">Contact Us</a></div>
           <div><strong>Safety</strong><p>Baby Hippo will never ask for your seed phrase or private key.</p></div>
         </div>
         <div className="public-container public-footer-bottom"><span>© 2026 Baby Hippo. Built carefully in Taiwan.</span><span>Education only. No guaranteed financial outcomes.</span></div>

@@ -25,8 +25,9 @@ import { PublicLanguageSwitcher } from "../components/public-language";
 import { PublicHeader } from "../components/public-header";
 import { useLearningMode } from "../components/public-learning-mode";
 
-const TELEGRAM_URL = "https://t.me/BabyHippoCommunity";
-const X_URL = "https://x.com/BabyHippoWeb3";
+const TELEGRAM_URL = "https://t.me/BabyHippoBHC";
+const X_URL = "https://x.com/BabyHippoBHC";
+const EMAIL_URL = "mailto:babyhippocoin@gmail.com";
 
 const communityValues = [
   {
@@ -282,6 +283,45 @@ export default function CommunityPage() {
           </div>
         </section>
 
+        <section className="community-section community-telegram-cta">
+          <div className="community-container community-telegram-card">
+            <div className="community-join-icon"><Send size={30} /></div>
+            <span className="community-eyebrow">Official Telegram</span>
+            <h2>Join the Baby Hippo Community</h2>
+            <p>
+              Receive Lobster Watch updates, development progress, Web3 education,
+              and future Beta testing invitations.
+            </p>
+            <a className="community-button telegram" href={TELEGRAM_URL} target="_blank" rel="noreferrer">
+              <Send size={18} /> Join Telegram <ArrowRight size={16} />
+            </a>
+          </div>
+        </section>
+
+        <section className="community-section community-notifications">
+          <div className="community-container community-notification-card">
+            <div>
+              <span className="community-eyebrow">Telegram notifications</span>
+              <h2>Never Miss an Update</h2>
+              <p>Telegram is our primary announcement channel.</p>
+            </div>
+            <div className="community-notification-list">
+              {[
+                "Lobster Watch Beta updates",
+                "Product announcements",
+                "Community events",
+                "Educational content",
+                "Future testing invitations",
+              ].map((item) => (
+                <span key={item}><Check size={15} /> {item}</span>
+              ))}
+            </div>
+            <a className="community-button telegram" href={TELEGRAM_URL} target="_blank" rel="noreferrer">
+              <Send size={18} /> Enable Notifications
+            </a>
+          </div>
+        </section>
+
         <section className="community-section community-join" id="join">
           <div className="community-container community-join-card">
             <div className="community-join-icon"><MessageCircle size={30} /></div>
@@ -335,7 +375,9 @@ export default function CommunityPage() {
           <div>
             <Link href="/">Homepage</Link>
             <Link href="/dashboard">Lobster Watch</Link>
-            <a href="#values">Community Values</a>
+            <a href={X_URL} target="_blank" rel="noreferrer">Follow us on X</a>
+            <a href={TELEGRAM_URL} target="_blank" rel="noreferrer">Join Telegram</a>
+            <a href={EMAIL_URL} target="_blank" rel="noreferrer">Contact Us</a>
           </div>
           <p>Education first. Risk management first. No guaranteed financial outcomes.</p>
         </div>

@@ -1,225 +1,228 @@
 "use client";
 
 import {
-  AlertTriangle, Award, BookOpen, CalendarCheck, Check, ChevronRight, CircleDollarSign,
-  Coins, GraduationCap, HeartHandshake, Landmark, LockKeyhole, Medal,
-  MessageCircle, PiggyBank, Route, ShieldCheck, Sparkles, Sprout, Star,
-  Target, Trophy, Users,
+  ArrowDown,
+  ArrowRight,
+  Award,
+  BarChart3,
+  Bot,
+  CheckCircle2,
+  Clock3,
+  FileCheck2,
+  KeyRound,
+  LockKeyhole,
+  MessageCircle,
+  PlugZap,
+  ShieldAlert,
+  ShieldCheck,
+  Sparkles,
+  UploadCloud,
+  WalletCards,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { PublicHeader } from "../components/public-header";
-import { useLearningMode } from "../components/public-learning-mode";
 
 type Language = "zh-TW" | "en";
-type CategoryId = "learning" | "planning" | "yield" | "community";
 type Localized = { zh: string; en: string };
-type Achievement = {
-  id: string;
-  category: CategoryId;
-  points: number;
-  title: Localized;
-  description: Localized;
-  href: string;
-  icon: typeof BookOpen;
-  actionTracked?: boolean;
-};
 
-const STORAGE_KEY = "baby-hippo-points-mvp";
 const LANGUAGE_KEY = "baby-hippo-language";
 const l = (zh: string, en: string): Localized => ({ zh, en });
 
-const categories: Record<CategoryId, {
-  label: Localized;
-  description: Localized;
-  icon: typeof BookOpen;
-  color: string;
-}> = {
-  learning: {
-    label: l("學習", "Learning"),
-    description: l("完成基礎課程，建立更安全的鏈上知識。", "Complete core lessons and build safer on-chain knowledge."),
-    icon: GraduationCap,
-    color: "#f3aa36",
-  },
-  planning: {
-    label: l("規劃", "Planning"),
-    description: l("把預算、風險與緊急預備金放進實際計畫。", "Turn budget, risk, and emergency cash into a practical plan."),
-    icon: Target,
-    color: "#51c9bb",
-  },
-  yield: {
-    label: l("收益學習", "Yield"),
-    description: l("先理解協議與風險，再認識收益來源。", "Understand protocols and risks before exploring yield sources."),
-    icon: Landmark,
-    color: "#9b81ec",
-  },
-  community: {
-    label: l("社群", "Community"),
-    description: l("認識故事、價值與一起成長的人。", "Discover the story, values, and people growing together."),
-    icon: HeartHandshake,
-    color: "#70c88b",
-  },
-};
+const exchangeConnectors = ["Binance", "OKX", "Bybit", "Bitget"];
+const walletConnectors = ["Rabby", "MetaMask", "WalletConnect"];
+const communityConnectors = ["Telegram", "X"];
 
-const achievements: Achievement[] = [
-  { id: "learn-bitcoin", category: "learning", points: 10, icon: Coins, href: "/learn#bitcoin",
-    title: l("完成比特幣課程", "Complete Bitcoin lesson"), description: l("了解比特幣的基本概念與價格波動風險。", "Understand Bitcoin basics and price-volatility risk.") },
-  { id: "learn-ethereum", category: "learning", points: 10, icon: Sparkles, href: "/learn#ethereum",
-    title: l("完成以太坊課程", "Complete Ethereum lesson"), description: l("認識智慧合約與以太坊應用。", "Learn about smart contracts and Ethereum applications.") },
-  { id: "learn-dca", category: "learning", points: 10, icon: Route, href: "/learn#dca",
-    title: l("完成定期定額課程", "Complete DCA lesson"), description: l("理解固定節奏如何降低擇時壓力。", "Understand how a schedule can reduce timing pressure.") },
-  { id: "learn-aave", category: "learning", points: 10, icon: Landmark, href: "/learn#aave",
-    title: l("完成 Aave 課程", "Complete Aave lesson"), description: l("認識借貸、抵押品、健康度與清算。", "Learn lending, collateral, Health Factor, and liquidation.") },
-  { id: "learn-etherfi", category: "learning", points: 10, icon: Sprout, href: "/learn#etherfi",
-    title: l("完成 Ether.fi 課程", "Complete Ether.fi lesson"), description: l("理解質押、流動性憑證與再質押層次。", "Understand staking, liquid receipt tokens, and restaking layers.") },
-  { id: "learn-risk", category: "learning", points: 10, icon: ShieldCheck, href: "/learn#risk",
-    title: l("完成風險管理課程", "Complete Risk lesson"), description: l("在行動前先思考可能出錯的地方。", "Think about what can go wrong before acting.") },
-  { id: "learn-seed", category: "learning", points: 10, icon: LockKeyhole, href: "/learn#seed-phrase",
-    title: l("完成助記詞安全課程", "Complete Seed Phrase Safety lesson"), description: l("學會保護錢包最重要的恢復資訊。", "Learn to protect the wallet's most important recovery information.") },
-  { id: "learn-onramp", category: "learning", points: 10, icon: Landmark, href: "/on-ramp",
-    title: l("閱讀台幣入金指南", "Read Taiwan fiat on-ramp guide"), description: l("了解如何從台幣開始，並比較入金方便性、費用與下一步。", "Learn how to start with TWD and compare convenience, fees, and next steps.") },
-
-  { id: "plan-first", category: "planning", points: 5, icon: CalendarCheck, href: "/dca-planner", actionTracked: true,
-    title: l("已建立定投計畫", "DCA plan created"), description: l("你已儲存一份定投計畫，但這不代表已經開始執行。", "You saved a DCA plan, but this does not mean execution has started.") },
-  { id: "plan-balanced", category: "planning", points: 20, icon: CircleDollarSign, href: "/dca-planner",
-    title: l("建立均衡 DCA 計畫", "Create balanced DCA plan"), description: l("用均衡風險偏好比較多項資產配置。", "Use the balanced risk profile to compare a multi-asset allocation.") },
-  { id: "plan-emergency", category: "planning", points: 20, icon: PiggyBank, href: "/dca-planner",
-    title: l("完成緊急預備金計畫", "Complete emergency fund plan"), description: l("先為生活安全建立現金目標，再規劃投入。", "Set an emergency cash target before planning investments.") },
-  { id: "funnel-exchange", category: "planning", points: 5, icon: Landmark, href: "/#start-journey", actionTracked: true,
-    title: l("已選擇交易平台", "Exchange Selected"), description: l("了解 Baby Hippo 不保管資金，並選擇自行買入資產的平台。", "Understand self-custody responsibilities and choose where to buy assets directly.") },
-  { id: "dca-started", category: "planning", points: 20, icon: Check, href: "/dca-planner#how-to-start", actionTracked: true,
-    title: l("已提交 DCA 承諾", "DCA Commitment Submitted"), description: l("你已自行提交定投承諾；Baby Hippo 未讀取或驗證交易所資料。", "You self-reported a DCA commitment. Baby Hippo did not read or verify exchange data.") },
-
-  { id: "yield-etherfi", category: "yield", points: 15, icon: Sprout, href: "/earn",
-    title: l("閱讀 Ether.fi 指南", "Review Ether.fi guide"), description: l("比較質押收益來源、代幣層次與退出風險。", "Compare staking yield sources, token layers, and exit risk.") },
-  { id: "yield-aave", category: "yield", points: 15, icon: Landmark, href: "/earn",
-    title: l("閱讀 Aave 指南", "Review Aave guide"), description: l("比較提供資產、借款與流動性風險。", "Compare supplying, borrowing, and liquidity risk.") },
-  { id: "yield-kamino", category: "yield", points: 15, icon: Sparkles, href: "/earn",
-    title: l("閱讀 Kamino 指南", "Review Kamino guide"), description: l("認識 Solana 借貸與金庫策略。", "Learn about Solana lending and vault strategies.") },
-  { id: "yield-hyperlend", category: "yield", points: 15, icon: Trophy, href: "/earn",
-    title: l("閱讀 HyperLend 指南", "Review HyperLend guide"), description: l("了解進階借貸、動態利率與較高風險。", "Understand advanced lending, dynamic rates, and higher risk.") },
-  { id: "funnel-passive", category: "yield", points: 15, icon: Sprout, href: "/#start-journey",
-    title: l("學習被動收入", "Learn Passive Income"), description: l("理解資產可能產生收益，但收益與本金都不保證。", "Understand that assets may produce yield without guaranteeing returns or principal.") },
-  { id: "funnel-aave", category: "yield", points: 20, icon: Landmark, href: "/learn#aave",
-    title: l("學習進階 Aave", "Learn Aave"), description: l("完成基礎課程後，認識抵押借貸、借款安全分數與清算。", "After the basics, learn collateral lending, borrowing safety, and liquidation.") },
-  { id: "dca-habit-verified", category: "planning", points: 50, icon: Trophy, href: "/dca-planner#how-to-start", actionTracked: true,
-    title: l("已驗證習慣里程碑", "Verified Habit Milestone"), description: l("未來由驗證系統確認持續定投習慣後才會取得；目前不會自動發放。", "Reserved for a future system that verifies a sustained DCA habit; it is not awarded automatically today.") },
-
-  { id: "community-story", category: "community", points: 5, icon: BookOpen, href: "/story",
-    title: l("閱讀創辦人故事", "Read founder story"), description: l("了解貨運、音樂教學與 Baby Hippo 的起點。", "Learn how freight work, music teaching, and Baby Hippo connect.") },
-  { id: "community-telegram", category: "community", points: 5, icon: MessageCircle, href: "/community#join",
-    title: l("加入 Telegram", "Join Telegram"), description: l("進入學習社群並自行確認官方連結。", "Enter the learning community and verify the official link yourself.") },
-  { id: "community-x", category: "community", points: 5, icon: Users, href: "/community#join",
-    title: l("追蹤 X", "Follow X"), description: l("追蹤創辦人筆記、產品進度與安全提醒。", "Follow founder notes, product progress, and safety reminders.") },
-  { id: "community-values", category: "community", points: 5, icon: HeartHandshake, href: "/community#values",
-    title: l("閱讀社群價值", "Read community values"), description: l("理解誠實成長、教育優先與社群重於炒作。", "Understand honest growth, education first, and community over hype.") },
+const roadmap = [
+  l("L1 測驗", "L1 Quiz"),
+  l("L2 人工審核", "L2 Manual Review"),
+  l("L3 交易所 API", "L3 Exchange API"),
+  l("L4 錢包驗證", "L4 Wallet Verification"),
+  l("L5 Telegram Bot", "L5 Telegram Bot"),
+  l("L6 AI 驗證", "L6 AI Verification"),
 ];
 
-const levels = [
-  { level: 1, min: 0, max: 99, name: l("探索者", "Explorer"), icon: Star },
-  { level: 2, min: 100, max: 299, name: l("建造者", "Builder"), icon: Medal },
-  { level: 3, min: 300, max: 599, name: l("鏈上工作者", "On-Chain Worker"), icon: Award },
-  { level: 4, min: 600, max: Infinity, name: l("Baby Hippo 老闆", "Baby Hippo Boss"), icon: Trophy },
-] as const;
+const passportItems = [
+  { label: l("學習", "Learning"), value: l("0%", "0%") },
+  { label: l("定投", "DCA"), value: l("0 筆紀錄", "0 Records") },
+  { label: l("鏈上收益", "DeFi"), value: l("0 個平台", "0 Platforms") },
+  { label: l("社群", "Community"), value: l("尚未連結", "Not Connected") },
+  { label: l("小龍蝦", "Lobster"), value: l("尚未啟用", "Inactive") },
+  { label: l("聲譽值", "Reputation"), value: l("0", "0") },
+  { label: l("驗證等級", "Verification Level"), value: l("L0", "L0") },
+];
+
+const dcaDataFields = [
+  l("交易所", "Exchange"),
+  l("資產", "Asset"),
+  l("訂單類型", "Order type"),
+  l("定投日期", "DCA date"),
+  l("金額", "Amount"),
+  l("計價貨幣", "Quote currency"),
+  l("頻率", "Frequency"),
+  l("執行狀態", "Execution status"),
+  l("證明來源", "Proof source"),
+  l("驗證狀態", "Verification status"),
+];
+
+const supportedAssets = ["BTC", "ETH", "SOL", "BNB", "LINK"];
+
+const dcaPassportItems = [
+  { label: l("BTC 定投", "BTC DCA"), value: l("0 筆紀錄", "0 records") },
+  { label: l("ETH 定投", "ETH DCA"), value: l("0 筆紀錄", "0 records") },
+  { label: l("最長連續紀錄", "Longest streak"), value: l("0 週", "0 weeks") },
+  { label: l("已驗證金額", "Verified amount"), value: l("0 USDT", "0 USDT") },
+  { label: l("驗證等級", "Verification level"), value: l("L0", "L0") },
+];
+
+const futureStates = [
+  l("等待審核", "Pending Review"),
+  l("API 已同步", "API Synced"),
+  l("已驗證", "Verified"),
+  l("已拒絕", "Rejected"),
+  l("偵測到重複資料", "Duplicate Detected"),
+];
 
 const copy = {
-  zh: {
-    eyebrow: "Baby Hippo 成就旅程",
-    title: "每一步學習，都值得被看見。",
-    lead: "透過學習、規劃、收益教育與社群參與累積 Baby Hippo Points。所有進度只儲存在這台裝置。",
-    disclaimer: "Baby Hippo Points 不是代幣、加密貨幣、證券、投資或金融產品。",
-    local: "本機 MVP・沒有後端、錢包或區塊鏈交易",
-    total: "總積分",
-    currentLevel: "目前等級",
-    completed: "已完成",
-    of: "／",
-    achievements: "項成就",
-    nextLevel: "距離下一等級",
-    pointsNeeded: "點",
-    maxJourney: "目前 MVP 已完成全部可用積分",
-    currentMvp: "目前 MVP 共可取得",
-    pointUnit: "點",
-    categoryBreakdown: "分類進度",
-    journey: "成就任務",
-    journeyLead: "一般學習卡片可自行標記；定投行動證明會由相關操作自動記錄。",
-    actionTracked: "由相關操作自動記錄",
-    complete: "標記完成",
-    undo: "取消完成",
-    visit: "前往相關頁面",
-    done: "已完成",
-    incomplete: "尚未完成",
-    levelRoad: "等級路線",
-    levelRoadLead: "目前任務最高 315 點；更高等級保留給未來新增的教育與社群成就。",
-    pointsRange: "點",
-    future: "未來社群表揚",
-    futureText: "Baby Hippo 未來可能推出社群表揚計畫，但不保證提供任何獎勵。",
-    futureNote: "不承諾空投、代幣、現金、收益或其他財務回報。",
-    reset: "重設全部進度",
-    resetConfirm: "再次點擊確認重設",
-    footer: "BHC Points 僅代表本機教育成就，不具有金錢價值，也不能轉讓、交易或兌換。",
+  "zh-TW": {
+    eyebrow: "BHC 成長驗證系統",
+    title: "成長驗證中心",
+    lead: "一切都從連結驗證開始。BHC Points 是可驗證的成長聲譽，不是代幣。未來的聲譽值會來自官方驗證證據，而不是手動領點。",
+    notice: "BHC 驗證的是成長。它不獎勵簡單點擊、每日簽到或假活動。未來每一個聲譽分數都會建立在可驗證證據之上。",
+    start: "開始成長旅程",
+    learn: "先了解",
+    passportPreview: "成長護照預覽",
+    passportTitle: "成長護照",
+    connectEyebrow: "先連結驗證",
+    connectTitle: "官方驗證管道",
+    connectLead: "這些卡片目前只是前端架構。未來任務會把每一個停用按鈕替換成真正的整合功能。",
+    exchangeTitle: "交易所驗證",
+    exchangeDescription: "透過支援的交易所驗證長期定投行為。",
+    walletTitle: "錢包驗證",
+    walletDescription: "驗證鏈上活動。",
+    communityTitle: "社群驗證",
+    communityDescription: "驗證社群參與。",
+    statusNotConnected: "狀態：尚未連結",
+    future: "未來",
+    exchangeFuture: "交易所 API 驗證",
+    walletFuture: "錢包簽章驗證",
+    communityFuture: "OAuth / Bot 驗證",
+    comingSoon: "即將推出",
+    connect: "連結",
+    connectWallet: "連結錢包",
+    dcaEyebrow: "定投驗證",
+    dcaTitle: "DCA Verification",
+    dcaLead: "BHC 驗證的是定投行為，不是交易所帳戶所有權。Binance 和 OKX 只是資料來源，未來只會使用唯讀驗證。",
+    sourceSelection: "選擇資料來源",
+    manualUpload: "手動上傳",
+    primarySource: "主要資料來源",
+    fallbackSource: "備用資料來源",
+    availableSoon: "即將開放",
+    verificationMethod: "驗證方式",
+    exchangeApi: "交易所 API",
+    manualMethod: "截圖 / email 證明",
+    reviewMethod: "審核方式",
+    manualAiReview: "先人工審核，未來加入 AI 驗證",
+    permissionsLater: "未來需要權限",
+    readOnlyOrderHistory: "唯讀訂單紀錄",
+    permissionsNotRequired: "不需要權限",
+    tradingWithdrawalTransfer: "交易權限、提幣權限、轉帳權限",
+    dcaModelTitle: "定投資料模型",
+    dcaModelLead: "未來 BHC 會檢查這些欄位，用來判斷一筆定投紀錄是否可信。",
+    supportedAssetsTitle: "V1 支援資產",
+    dcaPassportTitle: "定投護照預覽",
+    futureStatesTitle: "未來驗證狀態範例",
+    futureStatesLead: "以下只是 UI 狀態範例，尚未連接真實審核或 API 同步。",
+    safetyNotice: "BHC 只會使用唯讀驗證。永遠不要分享交易所密碼、助記詞、提幣權限或交易權限。",
+    tokenNotice: "DCA 驗證只建立成長聲譽。它不保證代幣獎勵、空投、投資報酬或財務建議。",
+    roadmapEyebrow: "驗證路線圖",
+    roadmapTitle: "未來解鎖順序",
+    roadmapLead: "成長驗證中心會先從簡單架構開始，逐步走向更強的證據驗證。本版本沒有啟用後端或任何連接器。",
+    noTokenTitle: "Points 不是代幣",
+    noTokenText: "BHC Points 是用來表示已驗證學習、定投紀律、DeFi 練習、社群貢獻與 Lobster Watch 使用情況的聲譽訊號。它不代表代幣所有權、代幣權利或保證未來空投。",
+    futureTokenTitle: "未來代幣關係",
+    futureTokenText: "如果 BHC 未來推出代幣，Points 可能會成為資格或聲譽的其中一項參考，但代幣分配會使用獨立規則、反女巫檢查，以及創辦人與社群批准。",
+    footer: "成長驗證中心目前只是前端架構。尚未啟用登入、後端、資料庫、錢包、OAuth、AI 或交易所連線。",
   },
   en: {
-    eyebrow: "Baby Hippo achievement journey",
-    title: "Every learning step deserves to be seen.",
-    lead: "Earn Baby Hippo Points through learning, planning, yield education, and community participation. Progress stays on this device.",
-    disclaimer: "Baby Hippo Points are not tokens, cryptocurrencies, securities, investments, or financial products.",
-    local: "Local-only MVP · No backend, wallet, or blockchain transactions",
-    total: "Total points",
-    currentLevel: "Current level",
-    completed: "Completed",
-    of: "of",
-    achievements: "achievements",
-    nextLevel: "Until next level",
-    pointsNeeded: "points",
-    maxJourney: "All currently available MVP points completed",
-    currentMvp: "Current MVP points available",
-    pointUnit: "points",
-    categoryBreakdown: "Category progress",
-    journey: "Achievement tasks",
-    journeyLead: "Learning cards can be marked manually. DCA proof tasks are tracked by their related actions.",
-    actionTracked: "Tracked by related action",
-    complete: "Mark complete",
-    undo: "Mark incomplete",
-    visit: "Visit related page",
-    done: "Completed",
-    incomplete: "Incomplete",
-    levelRoad: "Level roadmap",
-    levelRoadLead: "Current tasks total 315 points. Higher levels are reserved for future educational and community achievements.",
-    pointsRange: "points",
-    future: "Future Community Rewards",
-    futureText: "Baby Hippo may introduce community recognition programs in the future. No rewards are guaranteed.",
-    futureNote: "No airdrops, tokens, cash, yield, or other financial returns are promised.",
-    reset: "Reset all progress",
-    resetConfirm: "Click again to confirm reset",
-    footer: "BHC Points represents local educational achievements only. It has no monetary value and cannot be transferred, traded, or redeemed.",
+    eyebrow: "BHC Verified Growth System",
+    title: "Verified Growth Hub",
+    lead: "Everything starts from Connect. BHC Points are verified growth reputation, not tokens. Future reputation will come from official evidence, not manual point claiming.",
+    notice: "BHC verifies growth. It does not reward simple clicks, daily check-ins, or fake activity. Every future reputation score is built from verified evidence.",
+    start: "Start Verified Journey",
+    learn: "Learn First",
+    passportPreview: "Passport Preview",
+    passportTitle: "Growth Passport",
+    connectEyebrow: "Connect first",
+    connectTitle: "Official verification channels",
+    connectLead: "These cards are frontend architecture only. Future tasks will replace each disabled button with real integrations.",
+    exchangeTitle: "Exchange Verification",
+    exchangeDescription: "Verify long-term DCA behavior through supported exchanges.",
+    walletTitle: "Wallet Verification",
+    walletDescription: "Verify on-chain activity.",
+    communityTitle: "Community Verification",
+    communityDescription: "Verify community participation.",
+    statusNotConnected: "Status: Not Connected",
+    future: "Future",
+    exchangeFuture: "Exchange API Verification",
+    walletFuture: "Wallet Signature Verification",
+    communityFuture: "OAuth / Bot Verification",
+    comingSoon: "Coming Soon",
+    connect: "Connect",
+    connectWallet: "Connect Wallet",
+    dcaEyebrow: "DCA Verification",
+    dcaTitle: "DCA Verification",
+    dcaLead: "BHC verifies DCA behavior, not exchange ownership. Binance and OKX are only data sources, and future verification will use read-only access only.",
+    sourceSelection: "Source Selection",
+    manualUpload: "Manual Upload",
+    primarySource: "Primary source",
+    fallbackSource: "Fallback source",
+    availableSoon: "Available soon",
+    verificationMethod: "Verification method",
+    exchangeApi: "Exchange API",
+    manualMethod: "Screenshot / email proof",
+    reviewMethod: "Review method",
+    manualAiReview: "Manual review first, AI verification later",
+    permissionsLater: "Permissions required later",
+    readOnlyOrderHistory: "Read-only order history",
+    permissionsNotRequired: "Permissions not required",
+    tradingWithdrawalTransfer: "Trading, withdrawal, transfer",
+    dcaModelTitle: "DCA Data Model",
+    dcaModelLead: "BHC will inspect these fields later to decide whether a DCA record is trustworthy.",
+    supportedAssetsTitle: "Supported assets V1",
+    dcaPassportTitle: "DCA Passport Preview",
+    futureStatesTitle: "Future verified states",
+    futureStatesLead: "These are UI examples only. No real review or API sync is connected yet.",
+    safetyNotice: "BHC will only use read-only verification. Never share exchange passwords, seed phrases, withdrawal permissions, or trading permissions.",
+    tokenNotice: "DCA verification builds growth reputation only. It does not guarantee token rewards, airdrops, investment returns, or financial advice.",
+    roadmapEyebrow: "Verification roadmap",
+    roadmapTitle: "Future unlock order",
+    roadmapLead: "The Hub starts simple and grows toward stronger evidence. No backend or connector is active in this version.",
+    noTokenTitle: "Points are not tokens",
+    noTokenText: "BHC Points are reputation signals for verified learning, DCA discipline, DeFi practice, community contribution, and Lobster Watch usage. They do not represent token ownership, token rights, or a guaranteed future airdrop.",
+    futureTokenTitle: "Future Token Relationship",
+    futureTokenText: "If BHC launches a token in the future, Points may be one input for eligibility or reputation, but token distribution will use separate rules, anti-Sybil checks, and founder/community approval.",
+    footer: "Verified Growth Hub is frontend architecture only. No authentication, backend, database, wallet, OAuth, AI, or exchange connection is active.",
   },
 } as const;
 
-function getLevel(points: number) {
-  return [...levels].reverse().find((level) => points >= level.min) ?? levels[0];
+function ComingSoonBadge({ label }: { label: string }) {
+  return <span className="points-status-badge"><i /> {label}</span>;
+}
+
+function DisabledConnectButton({ label = "Connect" }: { label?: string }) {
+  return (
+    <button className="points-disabled-button" type="button" disabled>
+      {label}
+    </button>
+  );
 }
 
 export default function PointsPage() {
   const [language, setLanguage] = useState<Language>("zh-TW");
-  const [completed, setCompleted] = useState<string[]>([]);
-  const [confirmReset, setConfirmReset] = useState(false);
-  const { isBeginner } = useLearningMode();
-  const t = language === "zh-TW" ? copy.zh : copy.en;
-  const text = (value: Localized) => language === "zh-TW" ? value.zh : value.en;
 
   useEffect(() => {
     setLanguage(window.localStorage.getItem(LANGUAGE_KEY) === "en" ? "en" : "zh-TW");
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as { completed?: string[] };
-        if (Array.isArray(parsed.completed)) {
-          setCompleted(parsed.completed.filter((id) => achievements.some((achievement) => achievement.id === id)));
-        }
-      } catch {
-        setCompleted([]);
-      }
-    }
     const updateLanguage = (event: Event) => {
       const next = (event as CustomEvent<Language>).detail;
       if (next === "zh-TW" || next === "en") setLanguage(next);
@@ -228,50 +231,8 @@ export default function PointsPage() {
     return () => window.removeEventListener("baby-hippo-language-change", updateLanguage);
   }, []);
 
-  const totalPoints = useMemo(
-    () => achievements.filter((achievement) => completed.includes(achievement.id))
-      .reduce((sum, achievement) => sum + achievement.points, 0),
-    [completed],
-  );
-  const currentLevel = getLevel(totalPoints);
-  const nextLevel = levels.find((level) => level.min > totalPoints);
-  const nextThreshold = nextLevel?.min ?? Math.max(totalPoints, 600);
-  const progressBase = currentLevel.min;
-  const progressSpan = nextLevel ? nextThreshold - progressBase : 1;
-  const levelProgress = nextLevel ? Math.min(100, Math.max(0, (totalPoints - progressBase) / progressSpan * 100)) : 100;
-  const availablePoints = achievements.reduce((sum, achievement) => sum + achievement.points, 0);
-
-  const persistCompleted = (next: string[]) => {
-    const nextTotal = achievements.filter((achievement) => next.includes(achievement.id))
-      .reduce((sum, achievement) => sum + achievement.points, 0);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      completed: next,
-      totalPoints: nextTotal,
-      level: getLevel(nextTotal).level,
-    }));
-    window.dispatchEvent(new CustomEvent("baby-hippo-points-change", { detail: next }));
-  };
-
-  const toggle = (id: string) => {
-    setConfirmReset(false);
-    setCompleted((current) => {
-      const next = current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id];
-      persistCompleted(next);
-      return next;
-    });
-  };
-
-  const reset = () => {
-    if (!confirmReset) {
-      setConfirmReset(true);
-      return;
-    }
-    setCompleted([]);
-    persistCompleted([]);
-    setConfirmReset(false);
-  };
+  const t = copy[language];
+  const text = (value: Localized) => language === "zh-TW" ? value.zh : value.en;
 
   return (
     <div className="points-site" data-language-static>
@@ -283,164 +244,279 @@ export default function PointsPage() {
               <span className="points-eyebrow">{t.eyebrow}</span>
               <h1>{t.title}</h1>
               <p className="points-lead">{t.lead}</p>
-              <div className="points-local-note"><ShieldCheck size={17} /> {t.local}</div>
-            </div>
-            <div className="points-hero-badge" aria-hidden="true">
-              <div className="points-orbit one" /><div className="points-orbit two" />
-              <span><Trophy size={42} /><strong>{totalPoints}</strong><small>BHC Points</small></span>
-              <i className="b1"><BookOpen size={18} /></i>
-              <i className="b2"><Target size={18} /></i>
-              <i className="b3"><Landmark size={18} /></i>
-              <i className="b4"><Users size={18} /></i>
-            </div>
-          </div>
-          <div className="points-container points-disclaimer">
-            <AlertTriangle size={20} /><strong>{t.disclaimer}</strong>
-          </div>
-          {isBeginner && <div className="points-container learning-mode-note" data-language-static>
-            <strong>{language === "zh-TW" ? "把 BHC Points 想成遊戲進度，不是錢。" : "Think of BHC Points as game progress, not money."}</strong>
-            <p>{language === "zh-TW"
-              ? "完成學習與規劃任務，就會累積 BHC Points 積分。它不是代幣，也不是投資商品，只是幫你看見自己學到哪裡。"
-              : "Complete learning and planning tasks to collect BHC Points points. They are not tokens or investments—only a way to see your learning progress."}</p>
-          </div>}
-        </section>
-
-        <section className="points-dashboard">
-          <div className="points-container">
-            <div className="points-summary-grid">
-              <article className="points-total-card">
-                <span>{t.total}</span><strong>{totalPoints}</strong><small>BHC Points</small>
-              </article>
-              <article>
-                <span>{t.currentLevel}</span>
-                <strong>Level {currentLevel.level}</strong><small>{text(currentLevel.name)}</small>
-              </article>
-              <article>
-                <span>{t.completed}</span>
-                <strong>{completed.length} {t.of} {achievements.length}</strong><small>{t.achievements}</small>
-              </article>
-              <article>
-                <span>{t.currentMvp}</span><strong>{availablePoints}</strong><small>{t.pointUnit}</small>
-              </article>
+              <div className="points-notice">
+                <ShieldCheck size={18} />
+                <strong>{t.notice}</strong>
+              </div>
+              <div className="points-hero-actions">
+                <Link className="points-primary-cta" href="/points#dca-verification">
+                  {t.start} <ArrowRight size={17} />
+                </Link>
+                <Link className="points-secondary-cta" href="/learn">
+                  {t.learn}
+                </Link>
+              </div>
             </div>
 
-            <article className="points-level-progress">
-              <div className="points-level-heading">
+            <article className="points-passport-card">
+              <div className="points-passport-head">
+                <Award size={34} />
                 <div>
-                  <span className="points-eyebrow">{t.nextLevel}</span>
-                  <h2>{nextLevel ? text(nextLevel.name) : text(currentLevel.name)}</h2>
+                  <span>{t.passportPreview}</span>
+                  <h2>{t.passportTitle}</h2>
                 </div>
-                <strong>{nextLevel ? `${nextThreshold - totalPoints} ${t.pointsNeeded}` : t.maxJourney}</strong>
               </div>
-              <div className="points-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100}
-                aria-valuenow={Math.round(levelProgress)}>
-                <span style={{ width: `${levelProgress}%` }} />
+              <div className="points-passport-grid">
+                {passportItems.map((item) => (
+                  <div key={item.label.en}>
+                    <span>{text(item.label)}</span>
+                    <strong>{text(item.value)}</strong>
+                  </div>
+                ))}
               </div>
-              <div className="points-progress-labels"><span>{progressBase}</span><span>{nextLevel ? nextThreshold : "600+"}</span></div>
+            </article>
+          </div>
+        </section>
+
+        <section className="points-dca-section" id="dca-verification">
+          <div className="points-container">
+            <div className="points-section-heading">
+              <span className="points-eyebrow">{t.dcaEyebrow}</span>
+              <h2>{t.dcaTitle}</h2>
+              <p>{t.dcaLead}</p>
+            </div>
+
+            <div className="points-dca-source-grid">
+              {["Binance", "OKX"].map((name) => (
+                <article className="points-dca-source primary" key={name}>
+                  <div className="points-dca-source-top">
+                    <BarChart3 size={25} />
+                    <div>
+                      <span>{t.primarySource}</span>
+                      <h3>{name}</h3>
+                    </div>
+                  </div>
+                  <ComingSoonBadge label={t.comingSoon} />
+                  <dl>
+                    <div><dt>{t.statusNotConnected}</dt><dd>{t.verificationMethod}: {t.exchangeApi}</dd></div>
+                    <div><dt>{t.permissionsLater}</dt><dd>{t.readOnlyOrderHistory}</dd></div>
+                    <div><dt>{t.permissionsNotRequired}</dt><dd>{t.tradingWithdrawalTransfer}</dd></div>
+                  </dl>
+                  <DisabledConnectButton label={t.connect} />
+                </article>
+              ))}
+
+              <article className="points-dca-source fallback">
+                <div className="points-dca-source-top">
+                  <UploadCloud size={25} />
+                  <div>
+                    <span>{t.fallbackSource}</span>
+                    <h3>{t.manualUpload}</h3>
+                  </div>
+                </div>
+                <span className="points-status-badge manual"><i /> {t.availableSoon}</span>
+                <dl>
+                  <div><dt>{t.statusNotConnected}</dt><dd>{t.verificationMethod}: {t.manualMethod}</dd></div>
+                  <div><dt>{t.reviewMethod}</dt><dd>{t.manualAiReview}</dd></div>
+                </dl>
+                <DisabledConnectButton label={t.manualUpload} />
+              </article>
+            </div>
+
+            <div className="points-dca-dashboard-grid">
+              <article className="points-dca-model-card">
+                <div className="points-card-heading">
+                  <FileCheck2 size={23} />
+                  <div>
+                    <span>{t.sourceSelection}</span>
+                    <h3>{t.dcaModelTitle}</h3>
+                    <p>{t.dcaModelLead}</p>
+                  </div>
+                </div>
+                <div className="points-field-grid">
+                  {dcaDataFields.map((field) => <span key={field.en}>{text(field)}</span>)}
+                </div>
+              </article>
+
+              <article className="points-dca-passport-card">
+                <div className="points-card-heading">
+                  <Award size={23} />
+                  <div>
+                    <span>{t.supportedAssetsTitle}</span>
+                    <h3>{t.dcaPassportTitle}</h3>
+                  </div>
+                </div>
+                <div className="points-asset-row">
+                  {supportedAssets.map((asset) => <b key={asset}>{asset}</b>)}
+                </div>
+                <div className="points-dca-passport-grid">
+                  {dcaPassportItems.map((item) => (
+                    <div key={item.label.en}>
+                      <span>{text(item.label)}</span>
+                      <strong>{text(item.value)}</strong>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </div>
+
+            <article className="points-state-card">
+              <div className="points-card-heading">
+                <Clock3 size={23} />
+                <div>
+                  <span>{t.futureStatesTitle}</span>
+                  <h3>{t.futureStatesTitle}</h3>
+                  <p>{t.futureStatesLead}</p>
+                </div>
+              </div>
+              <div className="points-state-row">
+                {futureStates.map((state, index) => (
+                  <span className={`state-${index}`} key={state.en}>{text(state)}</span>
+                ))}
+              </div>
             </article>
 
-            <div className="points-section-heading">
-              <span className="points-eyebrow">{t.categoryBreakdown}</span><h2>{t.categoryBreakdown}</h2>
-            </div>
-            <div className="points-category-grid">
-              {(Object.keys(categories) as CategoryId[]).map((categoryId) => {
-                const category = categories[categoryId];
-                const Icon = category.icon;
-                const tasks = achievements.filter((achievement) => achievement.category === categoryId);
-                const done = tasks.filter((achievement) => completed.includes(achievement.id));
-                const earned = done.reduce((sum, achievement) => sum + achievement.points, 0);
-                const max = tasks.reduce((sum, achievement) => sum + achievement.points, 0);
-                return (
-                  <article key={categoryId} style={{ "--category-color": category.color } as React.CSSProperties}>
-                    <span className="points-category-icon"><Icon size={23} /></span>
-                    <div><h3>{text(category.label)}</h3><p>{text(category.description)}</p></div>
-                    <strong>{earned} / {max}</strong>
-                    <div className="points-mini-track"><span style={{ width: `${max ? earned / max * 100 : 0}%` }} /></div>
-                  </article>
-                );
-              })}
+            <div className="points-warning-grid">
+              <article>
+                <ShieldAlert size={22} />
+                <p>{t.safetyNotice}</p>
+              </article>
+              <article>
+                <ShieldCheck size={22} />
+                <p>{t.tokenNotice}</p>
+              </article>
             </div>
           </div>
         </section>
 
-        <section className="points-journey">
+        <section className="points-connect-section" id="connect">
           <div className="points-container">
             <div className="points-section-heading">
-              <span className="points-eyebrow">{t.journey}</span><h2>{t.journey}</h2><p>{t.journeyLead}</p>
+              <span className="points-eyebrow">{t.connectEyebrow}</span>
+              <h2>{t.connectTitle}</h2>
+              <p>{t.connectLead}</p>
             </div>
-            {(Object.keys(categories) as CategoryId[]).map((categoryId) => {
-              const category = categories[categoryId];
-              const CategoryIcon = category.icon;
-              return (
-                <div className="points-achievement-group" key={categoryId}>
-                  <div className="points-group-heading" style={{ "--category-color": category.color } as React.CSSProperties}>
-                    <span><CategoryIcon size={20} /></span>
-                    <div><h3>{text(category.label)}</h3><p>{text(category.description)}</p></div>
-                  </div>
-                  <div className="points-achievement-grid">
-                    {achievements.filter((achievement) => achievement.category === categoryId).map((achievement) => {
-                      const Icon = achievement.icon;
-                      const isDone = completed.includes(achievement.id);
-                      return (
-                        <article className={`points-achievement-card ${isDone ? "completed" : ""}`}
-                          key={achievement.id} style={{ "--category-color": category.color } as React.CSSProperties}>
-                          <button type="button" className="points-achievement-toggle"
-                            onClick={() => {
-                              if (!achievement.actionTracked) toggle(achievement.id);
-                            }}
-                            disabled={achievement.actionTracked}
-                            aria-pressed={isDone} aria-label={`${isDone ? t.undo : t.complete}: ${text(achievement.title)}`}>
-                            <span className="points-task-icon">{isDone ? <Check size={22} /> : <Icon size={22} />}</span>
-                            <span className="points-task-copy">
-                              <small>{achievement.actionTracked ? t.actionTracked : (isDone ? t.done : t.incomplete)}</small>
-                              <strong>{text(achievement.title)}</strong>
-                              <p>{text(achievement.description)}</p>
-                            </span>
-                            <span className="points-task-points">+{achievement.points} BHC Points</span>
-                          </button>
-                          <Link href={achievement.href}>{t.visit} <ChevronRight size={15} /></Link>
-                        </article>
-                      );
-                    })}
+
+            <div className="points-connector-grid">
+              <article className="points-connector-panel">
+                <div className="points-panel-heading">
+                  <BarChart3 size={26} />
+                  <div>
+                    <span>{t.exchangeTitle}</span>
+                    <h3>{t.exchangeDescription}</h3>
                   </div>
                 </div>
-              );
-            })}
+                <div className="points-card-list">
+                  {exchangeConnectors.map((name) => (
+                    <div className="points-connection-card" key={name}>
+                      <div>
+                        <strong>{name}</strong>
+                        <small>{t.statusNotConnected}</small>
+                        <p>{t.future}: {t.exchangeFuture}</p>
+                      </div>
+                      <ComingSoonBadge label={t.comingSoon} />
+                      <DisabledConnectButton label={t.connect} />
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="points-connector-panel">
+                <div className="points-panel-heading">
+                  <WalletCards size={26} />
+                  <div>
+                    <span>{t.walletTitle}</span>
+                    <h3>{t.walletDescription}</h3>
+                  </div>
+                </div>
+                <div className="points-card-list">
+                  {walletConnectors.map((name) => (
+                    <div className="points-connection-card" key={name}>
+                      <div>
+                        <strong>{name}</strong>
+                        <small>{t.statusNotConnected}</small>
+                        <p>{t.future}: {t.walletFuture}</p>
+                      </div>
+                      <ComingSoonBadge label={t.comingSoon} />
+                      <DisabledConnectButton label={t.connectWallet} />
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="points-connector-panel">
+                <div className="points-panel-heading">
+                  <MessageCircle size={26} />
+                  <div>
+                    <span>{t.communityTitle}</span>
+                    <h3>{t.communityDescription}</h3>
+                  </div>
+                </div>
+                <div className="points-card-list">
+                  {communityConnectors.map((name) => (
+                    <div className="points-connection-card" key={name}>
+                      <div>
+                        <strong>{name}</strong>
+                        <small>{t.statusNotConnected}</small>
+                        <p>{t.future}: {t.communityFuture}</p>
+                      </div>
+                      <ComingSoonBadge label={t.comingSoon} />
+                      <DisabledConnectButton label={t.connect} />
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </div>
           </div>
         </section>
 
-        <section className="points-levels">
+        <section className="points-roadmap-section">
           <div className="points-container">
             <div className="points-section-heading">
-              <span className="points-eyebrow">{t.levelRoad}</span><h2>{t.levelRoad}</h2><p>{t.levelRoadLead}</p>
+              <span className="points-eyebrow">{t.roadmapEyebrow}</span>
+              <h2>{t.roadmapTitle}</h2>
+              <p>{t.roadmapLead}</p>
             </div>
-            <div className="points-level-grid">
-              {levels.map((level) => {
-                const Icon = level.icon;
-                const reached = totalPoints >= level.min;
-                const active = currentLevel.level === level.level;
-                return (
-                  <article className={`${reached ? "reached" : ""} ${active ? "active" : ""}`} key={level.level}>
-                    <span><Icon size={24} /></span><small>Level {level.level}</small>
-                    <h3>{text(level.name)}</h3>
-                    <p>{level.max === Infinity ? `${level.min}+` : `${level.min}–${level.max}`} {t.pointsRange}</p>
+            <div className="points-roadmap">
+              {roadmap.map((step, index) => (
+                <div className="points-roadmap-step" key={step.en}>
+                  <article>
+                    {index === 0 && <CheckCircle2 size={22} />}
+                    {index === 1 && <Clock3 size={22} />}
+                    {index === 2 && <PlugZap size={22} />}
+                    {index === 3 && <KeyRound size={22} />}
+                    {index === 4 && <Bot size={22} />}
+                    {index === 5 && <Sparkles size={22} />}
+                    <strong>{text(step)}</strong>
                   </article>
-                );
-              })}
+                  {index < roadmap.length - 1 && <ArrowDown size={18} />}
+                </div>
+              ))}
             </div>
+          </div>
+        </section>
 
-            <article className="points-future">
-              <span><Sparkles size={28} /></span>
-              <div><small>{t.future}</small><h2>{t.future}</h2><p>{t.futureText}</p><strong>{t.futureNote}</strong></div>
+        <section className="points-principles">
+          <div className="points-container points-principle-grid">
+            <article>
+              <LockKeyhole size={24} />
+              <h2>{t.noTokenTitle}</h2>
+              <p>{t.noTokenText}</p>
             </article>
-
-            <button className={`points-reset ${confirmReset ? "confirm" : ""}`} type="button" onClick={reset}>
-              {confirmReset ? t.resetConfirm : t.reset}
-            </button>
+            <article>
+              <ShieldCheck size={24} />
+              <h2>{t.futureTokenTitle}</h2>
+              <p>{t.futureTokenText}</p>
+            </article>
           </div>
         </section>
       </main>
-      <footer className="points-footer"><div className="points-container"><strong>Baby Hippo Points</strong><p>{t.footer}</p></div></footer>
+      <footer className="points-footer">
+        <div className="points-container">
+          <strong>Baby Hippo Coin</strong>
+          <p>{t.footer}</p>
+        </div>
+      </footer>
     </div>
   );
 }

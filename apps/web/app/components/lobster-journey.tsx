@@ -7,9 +7,12 @@ import {
   Check,
   CreditCard,
   Landmark,
+  Megaphone,
   MonitorCheck,
+  Send,
   Sprout,
   WalletCards,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -17,8 +20,13 @@ type Language = "zh-TW" | "en";
 
 const LANGUAGE_KEY = "baby-hippo-language";
 
+const socialLinks = {
+  x: "https://x.com/BabyHippoBHC",
+  telegram: "https://t.me/BabyHippoBHC",
+} as const;
+
 const steps = [
-  { icon: WalletCards, zh: "台灣入金", en: "TWD On-Ramp" },
+  { icon: WalletCards, zh: "台幣入金", en: "TWD On-Ramp" },
   { icon: CalendarCheck, zh: "長期 DCA", en: "Long-Term DCA" },
   { icon: Sprout, zh: "被動收入", en: "Passive Income" },
   { icon: CreditCard, zh: "加密支付", en: "Crypto Payments" },
@@ -32,8 +40,11 @@ const copy = {
     body: "Baby Hippo 不保管資金，也不替使用者交易。我們幫助普通人一步一步學習、規劃、追蹤習慣並理解風險。",
     coreLabel: "你的資產成長儀表板",
     coreText: "追蹤習慣、學習進度、DCA 紀律與未來 DeFi 成就。",
-    items: ["DCA 進度", "學習進度", "被動收入成就", "DeFi 成就", "未來資產成長紀錄"],
+    items: ["DCA 進度", "學習進度", "被動收入里程碑", "DeFi 成就", "未來資產成長紀錄"],
     cta: "開啟 Lobster Watch",
+    announcement: "追蹤官方頻道，取得未來 Beta access 與產品更新。",
+    x: "Follow on X",
+    telegram: "Join Telegram",
   },
   en: {
     eyebrow: "Baby Hippo Journey",
@@ -43,6 +54,9 @@ const copy = {
     coreText: "Track habits, learning progress, DCA discipline, and future DeFi achievements.",
     items: ["DCA progress", "Learning progress", "Passive income milestones", "DeFi achievements", "Future asset-growth records"],
     cta: "Open Lobster Watch",
+    announcement: "Follow our official channels for future Beta access and product updates.",
+    x: "Follow on X",
+    telegram: "Join Telegram",
   },
 } as const;
 
@@ -104,6 +118,12 @@ export function LobsterJourney({ compact = false }: { compact?: boolean }) {
         </div>
         <Link href="/dashboard">{t.cta}</Link>
       </article>
+      <aside className="lobster-social-announcement">
+        <Megaphone size={18} />
+        <p>{t.announcement}</p>
+        <a href={socialLinks.x} target="_blank" rel="noreferrer"><X size={15} /> {t.x}</a>
+        <a href={socialLinks.telegram} target="_blank" rel="noreferrer"><Send size={15} /> {t.telegram}</a>
+      </aside>
     </section>
   );
 }

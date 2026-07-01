@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./points.css";
 
 export const metadata: Metadata = {
-  title: "Baby Hippo Points — Achievement Journey",
+  title: "Verified Growth Hub | Baby Hippo",
   description:
-    "A local-only, non-token educational achievement system connecting Baby Hippo learning, planning, yield education, story, and community activities.",
+    "The frontend architecture for BHC verified growth reputation across exchange, wallet, community, passport, and future proof systems.",
 };
 
 export default function PointsLayout({

@@ -7,13 +7,18 @@ import {
   Check,
   ClipboardCheck,
   Clock3,
+  Globe,
   LockKeyhole,
+  Mail,
+  MessageCircle,
   NotebookPen,
   RefreshCw,
   Search,
+  Send,
   ShieldCheck,
   Sparkles,
   WalletCards,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -105,6 +110,12 @@ type BinanceResponse = {
 
 const assets = ["BTC", "ETH", "SOL", "LINK", "BNB", "HYP", "TAO", "IO", "DOGE"];
 const storageKey = "lobster-watch-discipline-v1";
+const socialLinks = {
+  x: "https://x.com/BabyHippoBHC",
+  telegram: "https://t.me/BabyHippoBHC",
+  website: "https://babieshippo.com",
+  email: "mailto:babyhippocoin@gmail.com",
+} as const;
 
 const assetNames: Record<string, string> = {
   BTC: "Bitcoin",
@@ -829,6 +840,22 @@ export default function LobsterWatchDiscipline() {
           <div className="future-icon"><Clock3 size={26} /></div>
           <div><span className="alpha-badge">Beta</span><h2>{t.beta}</h2><p>{t.betaText}</p></div>
           <Link className="future-promise" href="/learn"><BookOpen size={17} /><span>{t.openLearn}</span></Link>
+        </section>
+
+        <section className="founder-panel founder-social-card">
+          <div className="panel-heading">
+            <div className="panel-heading-icon"><MessageCircle size={20} /></div>
+            <div>
+              <span>{language === "zh-TW" ? "官方頻道" : "Official Channels"}</span>
+              <h2>{language === "zh-TW" ? "Social Links" : "Social Links"}</h2>
+            </div>
+          </div>
+          <div className="founder-social-grid">
+            <a href={socialLinks.x} target="_blank" rel="noreferrer"><X size={18} /><span>Official X</span></a>
+            <a href={socialLinks.telegram} target="_blank" rel="noreferrer"><Send size={18} /><span>Official Telegram</span></a>
+            <a href={socialLinks.website} target="_blank" rel="noreferrer"><Globe size={18} /><span>Website</span></a>
+            <a href={socialLinks.email} target="_blank" rel="noreferrer"><Mail size={18} /><span>Email</span></a>
+          </div>
         </section>
 
         <footer className="founder-footer"><Sparkles size={16} /><span>{t.footer}</span></footer>
