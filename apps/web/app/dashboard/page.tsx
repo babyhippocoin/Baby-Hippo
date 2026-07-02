@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -38,6 +38,12 @@ import { groupBinanceDcaRecordsByAsset, loadBinanceDcaSyncState } from "../../li
 
 type View = "dashboard" | "alerts" | "aave" | "dca" | "settings";
 type Modal = "price" | "reminder" | null;
+type NavItem = {
+  id: View;
+  label: string;
+  icon: typeof Home;
+  badge?: number;
+};
 type DcaReminder = {
   id: string;
   sourceExchange: "binance";
@@ -48,9 +54,20 @@ type DcaReminder = {
   reminderTime: string;
   amount: string;
   quoteCurrency: string;
+  estimatedNextDcaTime: string | null;
   status: "active";
   createdAt: string;
   updatedAt: string;
+};
+type AlertItem = {
+  type: "Aave" | "BTC" | "ETH" | "DCA" | "System";
+  title: string;
+  detail: string;
+  time: string;
+  tone: "warning" | "notice" | "info" | "success";
+  unread: boolean;
+  source?: string;
+  relatedView?: View;
 };
 type MarketAsset = {
   price: number;
@@ -149,56 +166,15 @@ const AAVE_BASE_ASSETS = [
   },
 ];
 
-const nav = [
+const nav: NavItem[] = [
   { id: "dashboard" as View, label: "Dashboard", icon: Home },
-  { id: "alerts" as View, label: "Alerts", icon: Bell, badge: 3 },
+  { id: "alerts" as View, label: "Alerts", icon: Bell },
   { id: "aave" as View, label: "Aave", icon: Gauge },
   { id: "dca" as View, label: "DCA", icon: CalendarClock },
   { id: "settings" as View, label: "Settings", icon: Settings },
 ];
 
-const alerts = [
-  {
-    type: "Aave",
-    title: "Health Factor crossed 1.50",
-    detail: "Your monitored position moved from 1.58 to 1.43.",
-    time: "2 min ago",
-    tone: "warning",
-    unread: true,
-  },
-  {
-    type: "BTC",
-    title: "BTC moved above $70,000",
-    detail: "Reference price: $70,125 at 14:32.",
-    time: "18 min ago",
-    tone: "notice",
-    unread: true,
-  },
-  {
-    type: "DCA",
-    title: "Your BTC review is today",
-    detail: "You planned to review your monthly DCA decision at 19:00.",
-    time: "1 hr ago",
-    tone: "info",
-    unread: true,
-  },
-  {
-    type: "ETH",
-    title: "ETH moved below $3,000",
-    detail: "Reference price: $2,986 at 09:15.",
-    time: "Yesterday",
-    tone: "notice",
-    unread: false,
-  },
-  {
-    type: "System",
-    title: "Price monitoring recovered",
-    detail: "BTC and ETH reference data is current again.",
-    time: "Yesterday",
-    tone: "success",
-    unread: false,
-  },
-];
+const alerts: AlertItem[] = [];
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -774,6 +750,33 @@ function useTaipeiDate() {
   }, [now]);
 }
 
+function createReminderAlerts(reminders: DcaReminder[], language: "zh-TW" | "en"): AlertItem[] {
+  return reminders.map((reminder) => ({
+    type: "DCA",
+    title: language === "zh-TW" ? reminder.title : `${reminder.sourceAsset} DCA funding check`,
+    detail: language === "zh-TW"
+      ? `提醒時間：${formatSavedReminderDate(reminder, language)} · 預估定投：${formatMaybeDate(reminder.estimatedNextDcaTime, language)} · 預估金額：${reminder.amount || "0"} ${reminder.quoteCurrency}`
+      : `Reminder time: ${formatSavedReminderDate(reminder, language)} · Estimated DCA: ${formatMaybeDate(reminder.estimatedNextDcaTime, language)} · Estimated amount: ${reminder.amount || "0"} ${reminder.quoteCurrency}`,
+    time: formatRelativeReminderTime(reminder.createdAt, language),
+    tone: "info",
+    unread: reminder.status === "active",
+    source: "Lobster DCA Manager",
+    relatedView: "dca",
+  }));
+}
+
+function formatRelativeReminderTime(value: string, language: "zh-TW" | "en") {
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return language === "zh-TW" ? "剛剛" : "Just now";
+  const minutes = Math.max(0, Math.floor((Date.now() - time) / 60_000));
+  if (minutes < 1) return language === "zh-TW" ? "剛剛" : "Just now";
+  if (minutes < 60) return language === "zh-TW" ? `${minutes} 分鐘前` : `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return language === "zh-TW" ? `${hours} 小時前` : `${hours} hr ago`;
+  const days = Math.floor(hours / 24);
+  return language === "zh-TW" ? `${days} 天前` : `${days} days ago`;
+}
+
 export default function LobsterWatchPrototype() {
   const [view, setView] = useState<View>("dashboard");
   const [modal, setModal] = useState<Modal>(null);
@@ -859,18 +862,27 @@ export default function LobsterWatchPrototype() {
   };
 
   const createFundingReminder = (asset: BinanceDcaAssetSummary) => {
-    const fallback = new Date();
-    fallback.setDate(fallback.getDate() + 1);
-    const reminderDate = (asset.estimatedNextCheckTime ? new Date(asset.estimatedNextCheckTime) : fallback).toISOString().slice(0, 10);
+    let reminderDate = asset.estimatedNextCheckTime ? new Date(asset.estimatedNextCheckTime).toISOString().slice(0, 10) : "";
+    let reminderTime = asset.estimatedNextCheckTime ? new Date(asset.estimatedNextCheckTime).toTimeString().slice(0, 5) : "";
+    if (!reminderDate) {
+      const fallbackDate = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+      reminderDate = window.prompt(language === "zh-TW" ? "無法可靠推估下次定投時間，請輸入提醒日期（YYYY-MM-DD）" : "Next DCA time cannot be estimated reliably. Enter reminder date (YYYY-MM-DD).", fallbackDate) || "";
+      if (!reminderDate) return;
+    }
+    if (!reminderTime) {
+      reminderTime = window.prompt(language === "zh-TW" ? "請輸入提醒時間（HH:mm）" : "Enter reminder time (HH:mm).", "19:00") || "";
+      if (!reminderTime) return;
+    }
     addDcaReminder({
       sourceExchange: "binance",
       sourceAsset: asset.asset,
       type: "dca_funding_check",
       title: `${asset.asset} 定投資金檢查`,
       reminderDate,
-      reminderTime: "19:00",
+      reminderTime,
       amount: asset.usualAmount || asset.totalAmount.toFixed(2),
       quoteCurrency: asset.quoteCurrency || "USDT",
+      estimatedNextDcaTime: asset.estimatedNextDcaTime,
     });
     showToast(language === "zh-TW" ? `${asset.asset} 定投資金檢查已建立。` : `${asset.asset} funding check reminder created.`);
   };
@@ -882,11 +894,14 @@ export default function LobsterWatchPrototype() {
   };
 
   const filteredAlerts = useMemo(
-    () =>
-      alertFilter === "All"
-        ? alerts
-        : alerts.filter((alert) => alert.type === alertFilter),
-    [alertFilter],
+    () => {
+      const reminderAlerts = createReminderAlerts(dcaReminders, language);
+      const allAlerts = [...reminderAlerts, ...alerts];
+      return alertFilter === "All"
+        ? allAlerts
+        : allAlerts.filter((alert) => alert.type === alertFilter);
+    },
+    [alertFilter, dcaReminders, language],
   );
 
   return (
@@ -924,7 +939,7 @@ export default function LobsterWatchPrototype() {
             <span className="live-dot" />
             <div>
               <strong>All systems calm</strong>
-              <span>Mock data 繚 updated now</span>
+              <span>Local reminders stay on this device</span>
             </div>
           </div>
           <div className="read-only-chip">
@@ -969,6 +984,7 @@ export default function LobsterWatchPrototype() {
             filter={alertFilter}
             onFilter={setAlertFilter}
             alerts={filteredAlerts}
+            language={language}
             onNavigate={go}
             onToast={showToast}
           />
@@ -1029,7 +1045,7 @@ export default function LobsterWatchPrototype() {
           onClose={() => setModal(null)}
           onSave={() => {
             setModal(null);
-            showToast("Mock price alert added.");
+            showToast(language === "zh-TW" ? "價格提醒已建立。" : "Price alert added.");
           }}
         />
       )}
@@ -1734,17 +1750,28 @@ function AlertCenter({
   filter,
   onFilter,
   alerts: visibleAlerts,
+  language,
   onNavigate,
   onToast,
 }: {
   filter: string;
   onFilter: (filter: string) => void;
-  alerts: typeof alerts;
+  alerts: AlertItem[];
+  language: "zh-TW" | "en";
   onNavigate: (view: View) => void;
   onToast: (message: string) => void;
 }) {
-  const [selected, setSelected] = useState(alerts[0]);
-  const filters = ["All", "BTC", "ETH", "Aave", "DCA", "System"];
+  const [selected, setSelected] = useState<AlertItem | null>(null);
+  const isZh = language === "zh-TW";
+  const filters = [
+    { id: "All", label: isZh ? "全部" : "All" },
+    { id: "DCA", label: isZh ? "我的定投" : "My DCA" },
+    { id: "Aave", label: "Aave" },
+    { id: "BTC", label: "BTC" },
+    { id: "ETH", label: "ETH" },
+    { id: "System", label: "System" },
+  ];
+  const activeAlert = selected && visibleAlerts.some((alert) => alert.title === selected.title) ? selected : visibleAlerts[0] || null;
   return (
     <>
       <PageHeader
@@ -1752,7 +1779,7 @@ function AlertCenter({
         title="Alert Center"
         description="A calm record of what Lobster Watch noticed and reminded you about."
         action={
-          <button className="button secondary" onClick={() => onToast("All mock alerts marked read.")}>
+          <button className="button secondary" onClick={() => onToast("Reminders reviewed.")}>
             <Check size={17} />
             Mark all read
           </button>
@@ -1761,11 +1788,11 @@ function AlertCenter({
       <div className="filter-row">
         {filters.map((item) => (
           <button
-            key={item}
-            className={filter === item ? "active" : ""}
-            onClick={() => onFilter(item)}
+            key={item.id}
+            className={filter === item.id ? "active" : ""}
+            onClick={() => onFilter(item.id)}
           >
-            {item}
+            {item.label}
           </button>
         ))}
       </div>
@@ -1773,7 +1800,7 @@ function AlertCenter({
         <div className="activity-list alert-master">
           {visibleAlerts.map((alert) => (
             <button
-              className={`alert-select ${selected.title === alert.title ? "selected" : ""}`}
+              className={`alert-select ${activeAlert?.title === alert.title ? "selected" : ""}`}
               key={alert.title}
               onClick={() => setSelected(alert)}
             >
@@ -1781,45 +1808,50 @@ function AlertCenter({
             </button>
           ))}
           {visibleAlerts.length === 0 && (
-            <EmptyState icon={<Bell />} title="No alerts in this group" text="Try another filter." />
+            <EmptyState icon={<Bell />} title="No reminders in this group" text="Funding reminders created from Binance synced records will appear here." />
           )}
         </div>
-        <article className="alert-detail">
-          <div className={`detail-icon ${selected.tone}`}>
-            {selected.type === "Aave" ? <Gauge /> : selected.type === "DCA" ? <CalendarClock /> : <Bell />}
-          </div>
-          <span className={`severity ${selected.tone}`}>{selected.tone}</span>
-          <h2>{selected.title}</h2>
-          <p className="detail-lead">{selected.detail}</p>
-          <div className="detail-facts">
-            <Fact label="Detected" value={selected.time} />
-            <Fact label="Source" value="Mock reference data" />
-            <Fact label="Delivery" value="In-app 繚 Email" />
-          </div>
-          <div className="explanation-box">
-            <Info size={18} />
-            <div>
-              <strong>What this means</strong>
-              <p>
-                This alert reports a condition you chose to monitor. It is not a recommendation
-                to buy, sell, borrow, or repay.
-              </p>
+        {activeAlert ? (
+          <article className="alert-detail">
+            <div className={`detail-icon ${activeAlert.tone}`}>
+              {activeAlert.type === "Aave" ? <Gauge /> : activeAlert.type === "DCA" ? <CalendarClock /> : <Bell />}
             </div>
-          </div>
-          <button
-            className="button primary wide"
-            onClick={() => onNavigate(selected.type === "Aave" ? "aave" : selected.type === "DCA" ? "dca" : "dashboard")}
-          >
-            Review related page
-            <ChevronRight size={17} />
-          </button>
-        </article>
+            <span className={`severity ${activeAlert.tone}`}>{activeAlert.tone}</span>
+            <h2>{activeAlert.title}</h2>
+            <p className="detail-lead">{activeAlert.detail}</p>
+            <div className="detail-facts">
+              <Fact label="Detected" value={activeAlert.time} />
+              <Fact label="Source" value={activeAlert.source || "Lobster Watch"} />
+              <Fact label="Delivery" value="In-app only" />
+            </div>
+            <div className="explanation-box">
+              <Info size={18} />
+              <div>
+                <strong>What this means</strong>
+                <p>
+                  Lobster does not buy automatically. It only reminds you to check whether Binance funds are ready before the next DCA cycle.
+                </p>
+              </div>
+            </div>
+            <button
+              className="button primary wide"
+              onClick={() => onNavigate(activeAlert.relatedView || (activeAlert.type === "Aave" ? "aave" : activeAlert.type === "DCA" ? "dca" : "dashboard"))}
+            >
+              Review related page
+              <ChevronRight size={17} />
+            </button>
+          </article>
+        ) : (
+          <article className="alert-detail">
+            <EmptyState icon={<Bell />} title="No reminders yet" text="Create a funding check reminder from Lobster DCA Manager." />
+          </article>
+        )}
       </div>
     </>
   );
 }
 
-function AlertRow({ alert, compact = false }: { alert: (typeof alerts)[number]; compact?: boolean }) {
+function AlertRow({ alert, compact = false }: { alert: AlertItem; compact?: boolean }) {
   return (
     <div className={`alert-row ${compact ? "compact" : ""}`}>
       <div className={`alert-symbol ${alert.tone}`}>
@@ -2338,9 +2370,10 @@ function SavedDcaReminderCard({
       </div>
       <h3>{isZh ? reminder.title : `${reminder.sourceAsset} DCA funding check`}</h3>
       <div className="reminder-facts">
-        <Fact label={isZh ? "來源" : "Source"} value="Binance" />
-        <Fact label={isZh ? "提醒日期" : "Reminder date"} value={formatSavedReminderDate(reminder, language)} />
-        <Fact label={isZh ? "準備金額" : "Amount"} value={`${reminder.amount || "0"} ${reminder.quoteCurrency}`} />
+        <Fact label={isZh ? "提醒時間" : "Reminder time"} value={formatSavedReminderDate(reminder, language)} />
+        <Fact label={isZh ? "預估定投" : "Estimated DCA"} value={formatMaybeDate(reminder.estimatedNextDcaTime, language)} />
+        <Fact label={isZh ? "預估金額" : "Estimated amount"} value={`${reminder.amount || "0"} ${reminder.quoteCurrency}`} />
+        <Fact label={isZh ? "狀態" : "Status"} value={isZh ? "啟用中" : "Active"} />
       </div>
       <button className="card-action" onClick={onEdit}>
         {isZh ? "查看提醒" : "View reminder"}
@@ -2403,131 +2436,6 @@ function getSavedReminderAccent(asset: string) {
   return "green";
 }
 
-function DcaPage({
-  language,
-  onNew,
-  onToast,
-}: {
-  language: "zh-TW" | "en";
-  onNew: () => void;
-  onToast: (message: string) => void;
-}) {
-  const [reviewed, setReviewed] = useState(false);
-  return (
-    <>
-      <PageHeader
-        eyebrow="Steady habit, no auto-buy"
-        title="DCA Planner"
-        description="Schedule calm reminders to review your plan. No purchase happens automatically."
-        action={
-          <button className="button primary" onClick={onNew}>
-            <Plus size={18} />
-            New reminder
-          </button>
-        }
-      />
-      <article className={`next-reminder ${reviewed ? "completed" : ""}`}>
-        <div className="next-icon">
-          {reviewed ? <Check size={27} /> : <CalendarClock size={27} />}
-        </div>
-        <div className="next-copy">
-          <span>{reviewed ? "Reviewed today" : "Next reminder 繚 Today"}</span>
-          <h2>{reviewed ? "Nice work checking your plan." : "Review your DCA plan"}</h2>
-          <p>{reviewed ? "Your next reminder remains July 21 at 19:00." : "Today at 19:00 繚 Asia/Taipei 繚 Planning amount $100"}</p>
-        </div>
-        <div className="next-actions">
-          {!reviewed && (
-            <button className="button primary" onClick={() => { setReviewed(true); onToast("Marked as reviewed."); }}>
-              <Check size={17} />
-              Reviewed
-            </button>
-          )}
-          <button className="button secondary" onClick={() => onToast("Mock reminder snoozed for one hour.")}>
-            <Clock3 size={17} />
-            Snooze
-          </button>
-        </div>
-      </article>
-      <div className="section-heading">
-        <div>
-          <span className="eyebrow">Your schedule</span>
-          <h2>Active reminders</h2>
-        </div>
-        <span className="limit-copy">2 of 3 active</span>
-      </div>
-      <div className="reminder-grid">
-        <ReminderCard
-          language={language}
-          asset="BTC"
-          schedule="Monthly"
-          next="July 21 繚 19:00"
-          amount="$100"
-          accent="orange"
-          onEdit={() => onToast("Reminder selected for editing.")}
-        />
-        <ReminderCard
-          language={language}
-          asset="ETH"
-          schedule="Every 2 weeks"
-          next="July 5 繚 09:00"
-          amount="$50"
-          accent="blue"
-          onEdit={() => onToast("Reminder selected for editing.")}
-        />
-        <button className="add-reminder-card" onClick={onNew}>
-          <Plus size={25} />
-          <strong>Add another reminder</strong>
-          <span>Saved on this device</span>
-        </button>
-      </div>
-      <article className="calm-panel">
-        <Sparkles size={21} />
-        <div>
-          <strong>A reminder is not a recommendation.</strong>
-          <p>Check your budget and current situation. You can review, skip, or adjust your plan without pressure.</p>
-        </div>
-      </article>
-    </>
-  );
-}
-
-function ReminderCard({
-  language,
-  asset,
-  schedule,
-  next,
-  amount,
-  accent,
-  onEdit,
-}: {
-  language: "zh-TW" | "en";
-  asset: string;
-  schedule: string;
-  next: string;
-  amount: string;
-  accent: string;
-  onEdit: () => void;
-}) {
-  return (
-    <article className="card reminder-card">
-      <div className="card-top">
-        <div className={`coin-icon ${accent}`}>{asset === "BTC" ? <Bitcoin size={24} /> : <Coins size={24} />}</div>
-        <div className="status-chip success"><span />Active</div>
-      </div>
-      <h3>{asset} {language === "zh-TW" ? "閮瑼Ｘ" : "review"}</h3>
-      <div className="reminder-facts">
-        <Fact label="Frequency" value={schedule} />
-        <Fact label="Next" value={next} />
-        <Fact label="Planning amount" value={amount} />
-      </div>
-      <button className="card-action" onClick={onEdit}>
-        Edit reminder
-        <ChevronRight size={16} />
-      </button>
-    </article>
-  );
-}
-
 function SettingsPage({
   language,
   onLanguage,
@@ -2583,7 +2491,7 @@ function SettingsPage({
           <Toggle label="Email notifications" detail="Price, Aave, and DCA alerts" enabled={emailEnabled} onClick={onEmail} />
           <Toggle label="Quiet hours" detail="22:00??7:00 繚 Asia/Taipei" enabled={quietEnabled} onClick={onQuiet} />
           <Toggle label="Urgent Aave bypass" detail="Allow urgent alerts during quiet hours" />
-          <button className="button secondary" onClick={() => onToast("Mock test email sent.")}>
+          <button className="button secondary" onClick={() => onToast(language === "zh-TW" ? "測試通知已送出。" : "Test notification sent.")}>
             <Mail size={17} />
             Send test email
           </button>
@@ -2598,7 +2506,7 @@ function SettingsPage({
           </div>
         </SettingsSection>
         <div className="settings-save">
-          <button className="button primary" onClick={() => onToast("Mock settings saved.")}>Save settings</button>
+          <button className="button primary" onClick={() => onToast(language === "zh-TW" ? "設定已儲存。" : "Settings saved.")}>Save settings</button>
           <button className="button danger" onClick={() => onToast("Account deletion is disabled in the prototype.")}>Delete account</button>
         </div>
       </div>
@@ -2911,6 +2819,7 @@ function ReminderModal({
             reminderTime,
             amount,
             quoteCurrency: "USDT",
+            estimatedNextDcaTime: null,
           })}
         >
           {isZh ? "儲存提醒" : "Save reminder"}

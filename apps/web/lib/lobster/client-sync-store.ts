@@ -27,6 +27,7 @@ export type BinanceDcaAssetSummary = {
   latestExecutionTime: string | null;
   usualAmount: string | null;
   frequency: BhcDcaRecord["frequency"] | "unknown";
+  estimatedNextDcaTime: string | null;
   estimatedNextCheckTime: string | null;
   frequencyDetectable: boolean;
 };
@@ -131,6 +132,7 @@ export function groupBinanceDcaRecordsByAsset(records: BhcDcaRecord[]): BinanceD
         return sum + (Number.isFinite(amount) ? amount : 0);
       }, 0);
       const frequency = detectFrequency(sorted);
+      const estimatedNextDcaTime = estimateNextDcaTime(latest?.executedAt, frequency);
       return {
         asset,
         records: sorted,
@@ -140,7 +142,8 @@ export function groupBinanceDcaRecordsByAsset(records: BhcDcaRecord[]): BinanceD
         latestExecutionTime: latest?.executedAt || null,
         usualAmount: latest?.amount || null,
         frequency,
-        estimatedNextCheckTime: estimateNextCheckTime(latest?.executedAt, frequency),
+        estimatedNextDcaTime,
+        estimatedNextCheckTime: estimateNextCheckTime(estimatedNextDcaTime),
         frequencyDetectable: frequency !== "unknown",
       };
     })
@@ -164,7 +167,7 @@ function detectFrequency(records: BhcDcaRecord[]): BhcDcaRecord["frequency"] | "
   return "unknown";
 }
 
-function estimateNextCheckTime(executedAt: string | undefined, frequency: BhcDcaRecord["frequency"] | "unknown") {
+function estimateNextDcaTime(executedAt: string | undefined, frequency: BhcDcaRecord["frequency"] | "unknown") {
   if (!executedAt || frequency === "unknown") return null;
   const next = new Date(executedAt);
   if (Number.isNaN(next.getTime())) return null;
@@ -172,6 +175,13 @@ function estimateNextCheckTime(executedAt: string | undefined, frequency: BhcDca
   if (frequency === "weekly") next.setDate(next.getDate() + 7);
   if (frequency === "biweekly") next.setDate(next.getDate() + 14);
   if (frequency === "monthly") next.setMonth(next.getMonth() + 1);
-  next.setDate(next.getDate() - 1);
   return next.toISOString();
+}
+
+function estimateNextCheckTime(estimatedNextDcaTime: string | null) {
+  if (!estimatedNextDcaTime) return null;
+  const reminder = new Date(estimatedNextDcaTime);
+  if (Number.isNaN(reminder.getTime())) return null;
+  reminder.setDate(reminder.getDate() - 1);
+  return reminder.toISOString();
 }
