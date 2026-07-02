@@ -35,6 +35,17 @@ import { PublicLanguageSwitcher } from "../components/public-language";
 
 type View = "dashboard" | "alerts" | "aave" | "dca" | "settings";
 type Modal = "price" | "reminder" | null;
+type DcaReminder = {
+  id: string;
+  asset: string;
+  frequency: "weekly" | "biweekly" | "monthly";
+  startDate: string;
+  reminderTime: string;
+  plannedAmount: string;
+  quoteCurrency: string;
+  status: "active";
+  createdAt: string;
+};
 type MarketAsset = {
   price: number;
   change24h: number | null;
@@ -92,6 +103,7 @@ type AaveMonitorState = {
 
 const COINGECKO_SIMPLE_PRICE_URL =
   "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true&include_last_updated_at=true";
+const DCA_REMINDERS_STORAGE_KEY = "baby-hippo-dca-reminders";
 const BASE_RPC_URL = "https://mainnet.base.org";
 const AAVE_V3_BASE_POOL = "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5";
 const AAVE_V3_BASE_ORACLE = "0x2Cc0Fc26eD4563A5ce5e8bdcfe1A2878676Ae156";
@@ -766,6 +778,7 @@ export default function LobsterWatchPrototype() {
   const [quietEnabled, setQuietEnabled] = useState(true);
   const [language, setLanguage] = useState<"zh-TW" | "en">("zh-TW");
   const [walletModal, setWalletModal] = useState(false);
+  const [dcaReminders, setDcaReminders] = useState<DcaReminder[]>([]);
   const wallet = useWalletConnection();
   const aave = useAavePosition(wallet.address);
 
@@ -786,6 +799,19 @@ export default function LobsterWatchPrototype() {
     };
   }, []);
 
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(DCA_REMINDERS_STORAGE_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        setDcaReminders(parsed.filter((item) => item && typeof item.asset === "string"));
+      }
+    } catch {
+      setDcaReminders([]);
+    }
+  }, []);
+
   const chooseLanguage = (next: "zh-TW" | "en") => {
     window.localStorage.setItem("baby-hippo-language", next);
     setLanguage(next);
@@ -795,6 +821,18 @@ export default function LobsterWatchPrototype() {
   const showToast = (message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 2200);
+  };
+
+  const addDcaReminder = (input: Omit<DcaReminder, "id" | "createdAt" | "status">) => {
+    const reminder: DcaReminder = {
+      ...input,
+      id: `dca-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      status: "active",
+      createdAt: new Date().toISOString(),
+    };
+    const next = [reminder, ...dcaReminders];
+    setDcaReminders(next);
+    window.localStorage.setItem(DCA_REMINDERS_STORAGE_KEY, JSON.stringify(next));
   };
 
   const go = (next: View) => {
@@ -906,7 +944,12 @@ export default function LobsterWatchPrototype() {
           />
         )}
         {view === "dca" && (
-          <DcaPage language={language} onNew={() => setModal("reminder")} onToast={showToast} />
+          <RealDcaPage
+            language={language}
+            reminders={dcaReminders}
+            onNew={() => setModal("reminder")}
+            onToast={showToast}
+          />
         )}
         {view === "settings" && (
           <SettingsPage
@@ -952,9 +995,10 @@ export default function LobsterWatchPrototype() {
         <ReminderModal
           language={language}
           onClose={() => setModal(null)}
-          onSave={() => {
+          onSave={(reminder) => {
+            addDcaReminder(reminder);
             setModal(null);
-            showToast("Mock DCA reminder created.");
+            showToast(language === "zh-TW" ? "提醒已建立。" : "Reminder created.");
           }}
         />
       )}
@@ -2059,6 +2103,161 @@ function AavePage({
   );
 }
 
+function RealDcaPage({
+  language,
+  reminders,
+  onNew,
+  onToast,
+}: {
+  language: "zh-TW" | "en";
+  reminders: DcaReminder[];
+  onNew: () => void;
+  onToast: (message: string) => void;
+}) {
+  const isZh = language === "zh-TW";
+  const nextReminder = reminders[0];
+  return (
+    <>
+      <PageHeader
+        eyebrow={isZh ? "穩定紀律，不自動買入" : "Steady habit, no auto-buy"}
+        title={isZh ? "我的定投" : "My DCA"}
+        description={isZh ? "提醒只用來檢查你的定投紀律，不會自動買入、不會交易。" : "Reminders only help you check your DCA discipline. They never buy or trade automatically."}
+        action={
+          <button className="button primary" onClick={onNew}>
+            <Plus size={18} />
+            {isZh ? "新增提醒" : "New reminder"}
+          </button>
+        }
+      />
+      <article className="next-reminder">
+        <div className="next-icon">
+          <CalendarClock size={27} />
+        </div>
+        <div className="next-copy">
+          <span>{nextReminder ? (isZh ? "下一個提醒" : "Next reminder") : (isZh ? "尚未建立提醒" : "No reminder yet")}</span>
+          <h2>
+            {nextReminder
+              ? (isZh ? `${nextReminder.asset} 計畫檢查` : `${nextReminder.asset} plan check`)
+              : (isZh ? "尚未建立提醒。" : "No reminders have been created yet.")}
+          </h2>
+          <p>
+            {nextReminder
+              ? `${formatSavedReminderDate(nextReminder, language)} · ${formatSavedReminderFrequency(nextReminder.frequency, language)} · ${nextReminder.plannedAmount || "0"} ${nextReminder.quoteCurrency}`
+              : (isZh ? "建立 BNB、SOL 或其他資產提醒後，會顯示在這裡。" : "Create a BNB, SOL, or other asset reminder and it will appear here.")}
+          </p>
+        </div>
+        <div className="next-actions">
+          {nextReminder ? (
+            <button className="button primary" onClick={() => onToast(isZh ? "已記錄本次檢查。" : "Plan review noted.")}>
+              <Check size={17} />
+              {isZh ? "已檢查" : "Reviewed"}
+            </button>
+          ) : (
+            <button className="button primary" onClick={onNew}>
+              <Plus size={17} />
+              {isZh ? "新增提醒" : "New reminder"}
+            </button>
+          )}
+        </div>
+      </article>
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">{isZh ? "使用者建立資料" : "User-created data"}</span>
+          <h2>{isZh ? "目前提醒" : "Active reminders"}</h2>
+        </div>
+        <span className="limit-copy">{isZh ? `${reminders.length} 個提醒` : `${reminders.length} reminders`}</span>
+      </div>
+      <div className="reminder-grid">
+        {reminders.map((reminder) => (
+          <SavedDcaReminderCard
+            key={reminder.id}
+            language={language}
+            reminder={reminder}
+            onEdit={() => onToast(isZh ? `${reminder.asset} 提醒已選取。` : `${reminder.asset} reminder selected.`)}
+          />
+        ))}
+        {reminders.length === 0 && (
+          <article className="card reminder-card">
+            <div className="card-top">
+              <div className="coin-icon blue"><CalendarClock size={24} /></div>
+              <div className="status-chip"><span />{isZh ? "空白狀態" : "Empty"}</div>
+            </div>
+            <h3>{isZh ? "尚未建立提醒。" : "No reminders yet."}</h3>
+            <p className="calm-note">{isZh ? "這裡只會顯示你自己建立的提醒，不會預設顯示 BTC 或 ETH。" : "Only reminders you create will appear here. BTC or ETH will not appear by default."}</p>
+          </article>
+        )}
+        <button className="add-reminder-card" onClick={onNew}>
+          <Plus size={25} />
+          <strong>{isZh ? "新增提醒" : "Add reminder"}</strong>
+          <span>{isZh ? "提醒只會保存在這台裝置。" : "Reminders are saved on this device only."}</span>
+        </button>
+      </div>
+    </>
+  );
+}
+
+function SavedDcaReminderCard({
+  language,
+  reminder,
+  onEdit,
+}: {
+  language: "zh-TW" | "en";
+  reminder: DcaReminder;
+  onEdit: () => void;
+}) {
+  const isZh = language === "zh-TW";
+  const accent = getSavedReminderAccent(reminder.asset);
+  return (
+    <article className="card reminder-card">
+      <div className="card-top">
+        <div className={`coin-icon ${accent}`}>{reminder.asset === "BTC" ? <Bitcoin size={24} /> : <Coins size={24} />}</div>
+        <div className="status-chip success"><span />{isZh ? "啟用中" : "Active"}</div>
+      </div>
+      <h3>{reminder.asset} {isZh ? "計畫檢查" : "plan check"}</h3>
+      <div className="reminder-facts">
+        <Fact label={isZh ? "頻率" : "Frequency"} value={formatSavedReminderFrequency(reminder.frequency, language)} />
+        <Fact label={isZh ? "下次提醒" : "Next"} value={formatSavedReminderDate(reminder, language)} />
+        <Fact label={isZh ? "計畫金額" : "Planning amount"} value={`${reminder.plannedAmount || "0"} ${reminder.quoteCurrency}`} />
+      </div>
+      <button className="card-action" onClick={onEdit}>
+        {isZh ? "編輯提醒" : "Edit reminder"}
+        <ChevronRight size={16} />
+      </button>
+    </article>
+  );
+}
+
+function formatSavedReminderFrequency(frequency: DcaReminder["frequency"], language: "zh-TW" | "en") {
+  const labels = {
+    weekly: { "zh-TW": "每週", en: "Weekly" },
+    biweekly: { "zh-TW": "每兩週", en: "Every 2 weeks" },
+    monthly: { "zh-TW": "每月", en: "Monthly" },
+  } satisfies Record<DcaReminder["frequency"], Record<"zh-TW" | "en", string>>;
+  return labels[frequency]?.[language] || frequency;
+}
+
+function formatSavedReminderDate(reminder: DcaReminder, language: "zh-TW" | "en") {
+  const date = reminder.startDate || new Date().toISOString().slice(0, 10);
+  const time = reminder.reminderTime || "19:00";
+  try {
+    const formattedDate = new Date(`${date}T${time}:00`).toLocaleDateString(language === "zh-TW" ? "zh-TW" : "en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    return `${formattedDate} · ${time}`;
+  } catch {
+    return `${date} · ${time}`;
+  }
+}
+
+function getSavedReminderAccent(asset: string) {
+  if (asset === "BTC") return "orange";
+  if (asset === "ETH" || asset === "LINK") return "blue";
+  if (asset === "BNB" || asset === "DOGE") return "yellow";
+  if (asset === "SOL" || asset === "HYP") return "purple";
+  return "green";
+}
+
 function DcaPage({
   language,
   onNew,
@@ -2088,7 +2287,7 @@ function DcaPage({
         </div>
         <div className="next-copy">
           <span>{reviewed ? "Reviewed today" : "Next reminder · Today"}</span>
-          <h2>{reviewed ? "Nice work checking your plan." : "Review your BTC DCA plan"}</h2>
+          <h2>{reviewed ? "Nice work checking your plan." : "Review your DCA plan"}</h2>
           <p>{reviewed ? "Your next reminder remains July 21 at 19:00." : "Today at 19:00 · Asia/Taipei · Planning amount $100"}</p>
         </div>
         <div className="next-actions">
@@ -2119,7 +2318,7 @@ function DcaPage({
           next="July 21 · 19:00"
           amount="$100"
           accent="orange"
-          onEdit={() => onToast("BTC reminder selected for editing.")}
+          onEdit={() => onToast("Reminder selected for editing.")}
         />
         <ReminderCard
           language={language}
@@ -2128,12 +2327,12 @@ function DcaPage({
           next="July 5 · 09:00"
           amount="$50"
           accent="blue"
-          onEdit={() => onToast("ETH reminder selected for editing.")}
+          onEdit={() => onToast("Reminder selected for editing.")}
         />
         <button className="add-reminder-card" onClick={onNew}>
           <Plus size={25} />
           <strong>Add another reminder</strong>
-          <span>One slot remaining in this prototype</span>
+          <span>Saved on this device</span>
         </button>
       </div>
       <article className="calm-panel">
@@ -2499,7 +2698,7 @@ function LegacyReminderModal({
       </div>
       <div className="modal-actions">
         <button className="button secondary" onClick={onClose}>Cancel</button>
-        <button className="button primary" onClick={onSave}>Save mock reminder</button>
+        <button className="button primary" onClick={onSave}>Save reminder</button>
       </div>
     </ModalShell>
   );
@@ -2512,7 +2711,7 @@ function ReminderModal({
 }: {
   language: "zh-TW" | "en";
   onClose: () => void;
-  onSave: () => void;
+  onSave: (reminder: Omit<DcaReminder, "id" | "createdAt" | "status">) => void;
 }) {
   const [asset, setAsset] = useState("BTC");
   const [customAsset, setCustomAsset] = useState("");
@@ -2580,7 +2779,19 @@ function ReminderModal({
       </div>
       <div className="modal-actions">
         <button className="button secondary" onClick={onClose}>{isZh ? "取消" : "Cancel"}</button>
-        <button className="button primary" onClick={onSave}>{isZh ? "儲存提醒" : "Save reminder"}</button>
+        <button
+          className="button primary"
+          onClick={() => onSave({
+            asset: selectedAsset.toUpperCase(),
+            frequency: frequency as DcaReminder["frequency"],
+            startDate: "2026-07-21",
+            reminderTime: "19:00",
+            plannedAmount: "100",
+            quoteCurrency: "USDT",
+          })}
+        >
+          {isZh ? "儲存提醒" : "Save reminder"}
+        </button>
       </div>
     </ModalShell>
   );
