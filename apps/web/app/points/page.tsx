@@ -14,6 +14,14 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PublicHeader } from "../components/public-header";
+import type { BhcDcaRecord } from "../../lib/lobster/types";
+import {
+  createBinanceDcaSummary,
+  groupBinanceDcaRecordsByAsset,
+  loadBinanceDcaSyncState,
+  saveBinanceDcaSyncState,
+  type BinanceDcaSyncSummary,
+} from "../../lib/lobster/client-sync-store";
 
 type Language = "zh-TW" | "en";
 type Localized = { zh: string; en: string };
@@ -26,44 +34,19 @@ type ExchangeConnector = {
   description: Localized;
   enabled: boolean;
 };
-type BinanceSummary = {
-  connectedExchanges: number;
-  verifiedDcaOrders: number;
-  currentStreak: number;
-  verifiedAmount: string;
-  bhcPoints: number;
-  currentLevel: string;
-};
 type SyncResponse = {
   connected: boolean;
   exchange: "binance";
-  records?: SyncedDcaRecord[];
-  summary?: BinanceSummary;
+  records?: BhcDcaRecord[];
+  summary?: BinanceDcaSyncSummary;
   message?: string;
   error?: string;
-  warnings?: string[];
-};
-type SyncedDcaRecord = {
-  id: string;
-  exchange: "binance";
-  asset: string;
-  amount: string;
-  quoteCurrency: string;
-  frequency: string;
-  executedAt: string;
-  status: string;
-  source: string;
-  verificationState: string;
-};
-type AssetPassportRow = {
-  asset: string;
-  records: number;
-  amountUsdt: string;
-  lastSync: string;
 };
 
 const LANGUAGE_KEY = "baby-hippo-language";
 const l = (zh: string, en: string): Localized => ({ zh, en });
+const text = (value: Localized | string, language: Language) =>
+  typeof value === "string" ? value : language === "zh-TW" ? value.zh : value.en;
 
 const exchanges: ExchangeConnector[] = [
   {
@@ -73,8 +56,8 @@ const exchanges: ExchangeConnector[] = [
     logo: "B",
     enabled: true,
     description: l(
-      "V1 第一個真實唯讀連接。同步 recurring buy、auto-invest 與支援資產的現貨買入紀錄。",
-      "The first real V1 read-only connector. Syncs recurring buy, auto-invest, and supported spot buy history.",
+      "第一個真實唯讀連接。同步 recurring buy、auto-invest 與支援資產的現貨買入紀錄。",
+      "The first real read-only connector. It syncs recurring buy, auto-invest, and supported spot buy history.",
     ),
   },
   {
@@ -84,7 +67,7 @@ const exchanges: ExchangeConnector[] = [
     logo: "O",
     enabled: true,
     description: l(
-      "下一個即將接上的交易所。此版本先顯示連接說明，尚未同步真實 OKX 資料。",
+      "下一個即將接上的交易所。此版本只顯示連接說明，尚未同步真實 OKX 資料。",
       "The next exchange connector. This version opens an explanation modal but does not sync real OKX data yet.",
     ),
   },
@@ -96,27 +79,24 @@ const exchanges: ExchangeConnector[] = [
     enabled: false,
     description: l(
       "台灣入金路線的未來支援。此版本尚未實作 BitoPro。",
-      "Future support for the Taiwan on-ramp path. BitoPro is not implemented in this task.",
+      "Future support for the Taiwan on-ramp path. BitoPro is not implemented in this version.",
     ),
   },
 ];
 
 const futureExchanges = ["Bybit", "Bitget", "Bitunix"];
-
 const safetyBadges = [
   l("只讀取定投與訂單紀錄", "Only reads DCA and order records"),
   l("不會交易", "No trading"),
   l("不會提幣", "No withdrawals"),
   l("不會轉帳", "No transfers"),
 ];
-
 const connectSteps = [
   l("登入 Binance", "Log in to Binance"),
   l("建立 Binance 唯讀 API", "Create a Binance read-only API"),
   l("Lobster 讀取 DCA / recurring buy / 訂單紀錄", "Lobster reads DCA / recurring buy / order history"),
   l("Lobster 定投護照自動更新", "Lobster DCA Passport updates automatically"),
 ];
-
 const flow = [
   l("連接交易所", "Connect Exchange"),
   l("安全連接（唯讀）", "Safe read-only connection"),
@@ -124,14 +104,13 @@ const flow = [
   l("定投護照更新", "DCA Passport updates"),
   l("BHC 積分 / 等級預覽", "BHC Points / Level preview"),
 ];
-
 const scorePreview = [
   l("1 筆候選定投紀錄 = +10 BHC 積分", "1 verified candidate DCA record = +10 BHC Points"),
-  l("同資產 4 筆以上 = streak candidate", "4+ records in the same asset = streak candidate"),
-  l("L0 = 0 records", "L0 = 0 records"),
-  l("L1 = 1-3 records", "L1 = 1-3 records"),
-  l("L2 = 4-11 records", "L2 = 4-11 records"),
-  l("L3/L4 = 12+ records", "L3/L4 = 12+ records"),
+  l("同資產 4 筆以上 = 連續紀律候選", "4+ records in the same asset = streak candidate"),
+  l("L0 = 0 筆紀錄", "L0 = 0 records"),
+  l("L1 = 1-3 筆紀錄", "L1 = 1-3 records"),
+  l("L2 = 4-11 筆紀錄", "L2 = 4-11 records"),
+  l("L3/L4 = 12 筆以上", "L3/L4 = 12+ records"),
 ];
 
 const copy = {
@@ -147,15 +126,15 @@ const copy = {
     flowLead: "使用者不需要提交報告。連接 Binance 後，Lobster 會透過 server route 嘗試同步定投紀錄。",
     supportedTitle: "支援交易所 V1",
     supportedLead: "此版本以 Binance 為主要真實同步來源。OKX 先開放說明視窗，BitoPro 保持未來支援。",
-    statusNotConnected: "Not Connected",
-    statusConnected: "Connected",
-    statusComingSoon: "Coming Soon",
-    connect: "Connect",
+    statusNotConnected: "尚未連接",
+    statusConnected: "已連接",
+    statusComingSoon: "即將推出",
+    connect: "連接",
     safeConnection: "安全連接（唯讀）",
     noRecords: "已連接 Binance，但尚未找到可驗證的定投紀錄。",
     emptyPassport: "尚未找到已驗證定投紀錄。",
     syncedState: "已同步 Binance 定投紀錄",
-    connectedExchange: "Connected Exchange",
+    connectedExchange: "已連接交易所",
     syncedAssets: "已同步資產",
     lastSyncTime: "最後同步時間",
     assetRowsTitle: "已同步資產紀錄",
@@ -163,7 +142,7 @@ const copy = {
     syncFailed: "同步失敗，請確認 Binance API 是否為唯讀且具有訂單紀錄讀取權限。",
     futureExchanges: "未來支援交易所",
     comingSoon: "未來支援",
-    passportTitle: "DCA Passport preview",
+    passportTitle: "DCA Passport 預覽",
     connectedExchanges: "已連接交易所",
     verifiedOrders: "已驗證定投紀錄",
     currentStreak: "目前連續紀錄",
@@ -220,7 +199,7 @@ const copy = {
     syncFailed: "Sync failed. Confirm the Binance API is read-only and can read order history.",
     futureExchanges: "Future Exchanges",
     comingSoon: "Coming Soon",
-    passportTitle: "DCA Passport preview",
+    passportTitle: "DCA Passport Preview",
     connectedExchanges: "Connected Exchanges",
     verifiedOrders: "Verified DCA Orders",
     currentStreak: "Current Streak",
@@ -251,10 +230,6 @@ const copy = {
   },
 } as const;
 
-function text(value: Localized | string, language: Language) {
-  return typeof value === "string" ? value : language === "zh-TW" ? value.zh : value.en;
-}
-
 export default function PointsPage() {
   const [language, setLanguage] = useState<Language>("zh-TW");
   const [binanceConnected, setBinanceConnected] = useState(false);
@@ -263,12 +238,19 @@ export default function PointsPage() {
   const [apiSecret, setApiSecret] = useState("");
   const [loading, setLoading] = useState<"test" | "sync" | "">("");
   const [message, setMessage] = useState("");
-  const [summary, setSummary] = useState<BinanceSummary | null>(null);
-  const [syncedRecords, setSyncedRecords] = useState<SyncedDcaRecord[]>([]);
+  const [summary, setSummary] = useState<BinanceDcaSyncSummary | null>(null);
+  const [syncedRecords, setSyncedRecords] = useState<BhcDcaRecord[]>([]);
   const [lastSyncTime, setLastSyncTime] = useState("");
 
   useEffect(() => {
     setLanguage(window.localStorage.getItem(LANGUAGE_KEY) === "en" ? "en" : "zh-TW");
+    const saved = loadBinanceDcaSyncState();
+    if (saved) {
+      setBinanceConnected(saved.connected);
+      setSyncedRecords(saved.records);
+      setSummary(saved.summary);
+      setLastSyncTime(saved.lastSyncTime);
+    }
     const updateLanguage = (event: Event) => {
       const next = (event as CustomEvent<Language>).detail;
       if (next === "zh-TW" || next === "en") setLanguage(next);
@@ -278,40 +260,19 @@ export default function PointsPage() {
   }, []);
 
   const t = copy[language];
-
-  const assetRows = useMemo<AssetPassportRow[]>(() => {
-    const grouped = new Map<string, { records: number; amount: number; lastTime: number }>();
-    for (const record of syncedRecords) {
-      const current = grouped.get(record.asset) || { records: 0, amount: 0, lastTime: 0 };
-      const amount = record.quoteCurrency === "USDT" ? Number(record.amount) : 0;
-      const time = new Date(record.executedAt).getTime();
-      grouped.set(record.asset, {
-        records: current.records + (record.verificationState === "verified_candidate" ? 1 : 0),
-        amount: current.amount + (Number.isFinite(amount) ? amount : 0),
-        lastTime: Math.max(current.lastTime, Number.isFinite(time) ? time : 0),
-      });
-    }
-    return Array.from(grouped.entries())
-      .map(([asset, row]) => ({
-        asset,
-        records: row.records,
-        amountUsdt: row.amount.toFixed(2),
-        lastSync: row.lastTime ? new Date(row.lastTime).toLocaleString(language === "zh-TW" ? "zh-TW" : "en-US") : "-",
-      }))
-      .sort((a, b) => a.asset.localeCompare(b.asset));
-  }, [language, syncedRecords]);
-
-  const passportItems = useMemo(() => [
-    { label: t.connectedExchanges, value: `${summary?.connectedExchanges || (binanceConnected ? 1 : 0)} / 3` },
+  const assetRows = useMemo(() => groupBinanceDcaRecordsByAsset(syncedRecords), [syncedRecords]);
+  const activeSummary = summary || createBinanceDcaSummary(syncedRecords);
+  const passportItems = [
+    { label: t.connectedExchanges, value: `${activeSummary.connectedExchanges || (binanceConnected ? 1 : 0)} / 3` },
     { label: t.connectedExchange, value: binanceConnected ? "Binance" : "-" },
     { label: t.syncedAssets, value: String(assetRows.length) },
-    { label: t.verifiedOrders, value: String(summary?.verifiedDcaOrders || 0) },
-    { label: t.currentStreak, value: language === "zh-TW" ? `${summary?.currentStreak || 0} 週` : `${summary?.currentStreak || 0} weeks` },
-    { label: t.verifiedAmount, value: `${summary?.verifiedAmount || "0"} USDT` },
-    { label: t.bhcPoints, value: String(summary?.bhcPoints || 0) },
-    { label: t.currentLevel, value: summary?.currentLevel || "L0" },
+    { label: t.verifiedOrders, value: String(activeSummary.verifiedDcaOrders || 0) },
+    { label: t.currentStreak, value: language === "zh-TW" ? `${activeSummary.currentStreak || 0} 週` : `${activeSummary.currentStreak || 0} weeks` },
+    { label: t.verifiedAmount, value: `${activeSummary.verifiedAmount || "0"} USDT` },
+    { label: t.bhcPoints, value: String(activeSummary.bhcPoints || 0) },
+    { label: t.currentLevel, value: activeSummary.currentLevel || "L0" },
     { label: t.lastSyncTime, value: lastSyncTime || "-" },
-  ], [assetRows.length, binanceConnected, language, lastSyncTime, summary, t]);
+  ];
 
   const closeModal = () => {
     setActiveExchange(null);
@@ -350,11 +311,15 @@ export default function PointsPage() {
         setMessage(body.error || t.syncFailed);
         return;
       }
+      const records = body.records || [];
+      const syncTime = new Date().toLocaleString(language === "zh-TW" ? "zh-TW" : "en-US");
+      const nextSummary = body.summary || createBinanceDcaSummary(records);
       setBinanceConnected(true);
-      setSummary(body.summary || null);
-      setSyncedRecords(body.records || []);
-      setLastSyncTime(new Date().toLocaleString(language === "zh-TW" ? "zh-TW" : "en-US"));
-      setMessage(body.records?.length ? body.message || t.syncedState : t.noRecords);
+      setSummary(nextSummary);
+      setSyncedRecords(records);
+      setLastSyncTime(syncTime);
+      saveBinanceDcaSyncState({ records, summary: nextSummary, lastSyncTime: syncTime });
+      setMessage(records.length ? body.message || t.syncedState : t.noRecords);
       setActiveExchange(null);
       setApiSecret("");
     } catch {
@@ -387,7 +352,6 @@ export default function PointsPage() {
                 </Link>
               </div>
             </div>
-
             <PassportCard
               title={t.passportTitle}
               items={passportItems}
@@ -429,7 +393,6 @@ export default function PointsPage() {
               <h2>{t.supportedTitle}</h2>
               <p>{t.supportedLead}</p>
             </div>
-
             <div className="points-exchange-grid">
               {exchanges.map((exchange) => {
                 const isBinance = exchange.id === "binance";
@@ -462,9 +425,7 @@ export default function PointsPage() {
                 );
               })}
             </div>
-
             {message && <div className="points-sync-ready points-page-message"><CheckCircle2 size={18} /><strong>{message}</strong></div>}
-
             <div className="points-future-exchanges">
               <h3>{t.futureExchanges}</h3>
               <div>
@@ -608,7 +569,7 @@ function PassportCard({
   items: Array<{ label: string; value: string }>;
   syncReady: string;
   emptyText: string;
-  assetRows: AssetPassportRow[];
+  assetRows: ReturnType<typeof groupBinanceDcaRecordsByAsset>;
   assetRowsTitle: string;
   verifiedRecordsUnit: string;
   language: Language;
@@ -643,11 +604,11 @@ function PassportCard({
             <article key={row.asset}>
               <div>
                 <strong>{language === "zh-TW" ? `${row.asset} 定投` : `${row.asset} DCA`}</strong>
-                <span>{row.records} {verifiedRecordsUnit}</span>
+                <span>{row.verifiedRecords} {verifiedRecordsUnit}</span>
               </div>
               <div>
-                <strong>{row.amountUsdt} USDT</strong>
-                <span>{row.lastSync}</span>
+                <strong>{row.totalAmount.toFixed(2)} USDT</strong>
+                <span>{row.latestExecutionTime ? new Date(row.latestExecutionTime).toLocaleString(language === "zh-TW" ? "zh-TW" : "en-US") : "-"}</span>
               </div>
             </article>
           ))}
