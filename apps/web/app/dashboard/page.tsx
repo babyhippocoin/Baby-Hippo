@@ -725,7 +725,7 @@ function useTaipeiDate() {
   return useMemo(() => {
     if (!now) {
       return {
-        heading: "Today 繚 Asia/Taipei",
+        heading: "Today · Asia/Taipei",
         month: "",
         day: "",
       };
@@ -1245,7 +1245,7 @@ function Dashboard({
             <span>Aave warning</span>
             <strong>Your Base Health Factor is below 2.00.</strong>
             <p>
-              Current Health Factor: {healthFactor?.toFixed(2)} 繚 read-only monitoring
+              Current Health Factor: {healthFactor?.toFixed(2)} · read-only monitoring
             </p>
           </div>
           <button className="button dark" onClick={() => onNavigate("aave")}>
@@ -1387,9 +1387,9 @@ function WalletButton({
   onDisconnect: () => void;
 }) {
   return (
-    <button className="button wallet-button" disabled title="Wallet connection is not open during beta">
+    <button className="button wallet-button" disabled title="錢包連接開發中">
       <Clock3 size={17} />
-      ?Ｗ????銝?
+      錢包連接開發中
     </button>
   );
 }
@@ -1514,7 +1514,7 @@ function AssetCard({
           </div>
           <div className="updated">
             <Clock3 size={14} />
-            CoinGecko 繚 updated {updatedLabel}
+            CoinGecko · updated {updatedLabel}
           </div>
           {error && (
             <button className="market-error-inline" onClick={onRetry}>
@@ -1583,7 +1583,7 @@ function LegacyAaveCard({
       </div>
       <div className="asset-label">
         <h3>Aave Health Factor</h3>
-        <span>Base 繚 Aave V3 繚 read-only</span>
+        <span>Base · Aave V3 · read-only</span>
       </div>
       {!walletAddress ? (
         <div className="aave-connect-empty">
@@ -1635,7 +1635,7 @@ function LegacyAaveCard({
           </div>
           <div className="updated">
             <WalletCards size={14} />
-            {shortAddress(walletAddress)} 繚 checked{" "}
+            {shortAddress(walletAddress)} · checked{" "}
             {new Date(aave.data?.checkedAt ?? Date.now()).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
@@ -1989,7 +1989,7 @@ function AavePage({
           <div className="wallet-gate-icon">
             <ShieldCheck size={31} />
           </div>
-          <span className="eyebrow">Base 繚 Aave V3 繚 read-only</span>
+          <span className="eyebrow">Base · Aave V3 · read-only</span>
           <h2>No Aave position found on Base</h2>
           <p>
             Wallet {shortAddress(walletAddress)} has no supplied or borrowed balance in the Aave
@@ -2074,7 +2074,7 @@ function AavePage({
               <div className="section-heading small">
                 <div>
                   <span className="eyebrow">Live read-only position</span>
-                  <h2>Base 繚 Aave V3</h2>
+                  <h2>Base · Aave V3</h2>
                 </div>
                 <button
                   className="icon-button"
@@ -2117,7 +2117,7 @@ function AavePage({
                 <span className="eyebrow">Supported Base positions</span>
                 <h2>ETH, weETH, cbBTC and USDC</h2>
               </div>
-              <span className="limit-copy">Live 繚 manual refresh only</span>
+              <span className="limit-copy">Live · manual refresh only</span>
             </div>
             <div className="aave-assets-grid">
               {aave.data?.assets.map((asset) => (
@@ -2126,7 +2126,7 @@ function AavePage({
                     <span>{asset.symbol.slice(0, 1)}</span>
                     <div>
                       <strong>{asset.symbol}</strong>
-                      <small>Aave V3 繚 Base</small>
+                      <small>Aave V3 · Base</small>
                     </div>
                   </div>
                   <div className="aave-asset-values">
@@ -2165,7 +2165,7 @@ function AavePage({
           <div className="wallet-gate-icon">
             <Activity size={31} />
           </div>
-          <span className="eyebrow">Connected wallet 繚 Base chain ID 8453</span>
+          <span className="eyebrow">Connected wallet · Base chain ID 8453</span>
           <h2>Ready to check Aave V3 Base</h2>
           <p>
             Lobster Watch will make one read-only check for {shortAddress(walletAddress)}. There
@@ -2474,8 +2474,8 @@ function SettingsPage({
           <label className="field">
             <span>Language</span>
             <select value={language} onChange={(event) => onLanguage(event.target.value as "zh-TW" | "en")}>
-              <option value="zh-TW">蝜?銝剜? ??</option>
-              <option value="en">English ??</option>
+              <option value="zh-TW">繁體中文 🇹🇼</option>
+              <option value="en">English 🇺🇸</option>
             </select>
           </label>
           <label className="field">
@@ -2489,7 +2489,7 @@ function SettingsPage({
         </SettingsSection>
         <SettingsSection icon={<Bell />} title="Notifications">
           <Toggle label="Email notifications" detail="Price, Aave, and DCA alerts" enabled={emailEnabled} onClick={onEmail} />
-          <Toggle label="Quiet hours" detail="22:00??7:00 繚 Asia/Taipei" enabled={quietEnabled} onClick={onQuiet} />
+          <Toggle label="Quiet hours" detail="22:00–7:00 · Asia/Taipei" enabled={quietEnabled} onClick={onQuiet} />
           <Toggle label="Urgent Aave bypass" detail="Allow urgent alerts during quiet hours" />
           <button className="button secondary" onClick={() => onToast(language === "zh-TW" ? "測試通知已送出。" : "Test notification sent.")}>
             <Mail size={17} />
@@ -2683,7 +2683,7 @@ function PriceAlertModal({
         </div>
       </div>
       <label className="field">
-        <span>Target price 繚 USD</span>
+        <span>Target price · USD</span>
         <input value={target} onChange={(event) => setTarget(event.target.value)} inputMode="numeric" />
       </label>
       <Toggle label="Email notification" detail="Also send this alert to your inbox" enabled />
@@ -2740,7 +2740,7 @@ function LegacyReminderModal({
         </label>
       </div>
       <label className="field">
-        <span>Planning amount 繚 optional</span>
+        <span>Planning amount · optional</span>
         <input defaultValue="100" inputMode="numeric" />
       </label>
       <div className="modal-preview">
