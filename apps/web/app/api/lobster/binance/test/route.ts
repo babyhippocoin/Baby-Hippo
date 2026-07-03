@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { BinanceAdapter } from "../../../../../lib/lobster/exchange/adapters/binance-adapter";
 
 export const runtime = "nodejs";
+export const preferredRegion = "hnd1";
 
 function readCredentials(body: unknown) {
   if (!body || typeof body !== "object") return null;
@@ -30,6 +31,8 @@ export async function POST(request: Request) {
       exchange: "binance",
       permissionsDetected: result?.permissionsDetected || [],
       error: result?.connected ? undefined : result?.error || "Connection failed.",
+      errorCategory: result?.errorCategory,
+      diagnostics: result?.diagnostics,
     });
   } catch {
     return NextResponse.json({

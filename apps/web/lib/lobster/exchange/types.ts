@@ -30,6 +30,27 @@ export type ExchangeConnectionTestResult = {
   exchange: ExchangeId;
   permissionsDetected?: string[];
   error?: string;
+  errorCategory?:
+    | "restricted_region"
+    | "ip_whitelist"
+    | "invalid_key"
+    | "permission"
+    | "timestamp"
+    | "signature"
+    | "network"
+    | "unknown";
+  diagnostics?: {
+    httpStatus?: number;
+    binanceCode?: number;
+    binanceMessage?: string;
+    requestTargetEndpoint: string;
+    runtimeEnvironment: string;
+    vercelRegion?: string;
+    timestamp: string;
+    recvWindow: string;
+    requestReachedBinance: boolean;
+    hmacSignatureBuilt: boolean;
+  };
 };
 
 export interface ExchangeAdapter {

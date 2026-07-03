@@ -13,6 +13,8 @@ type BinanceSafeError = {
   code?: number;
   msg?: string;
 };
+type BinanceErrorCategory = NonNullable<ExchangeConnectionTestResult["errorCategory"]>;
+type BinanceSafeDiagnostics = NonNullable<ExchangeConnectionTestResult["diagnostics"]>;
 
 type NormalizedRawRecord = {
   rawId: string;
@@ -25,15 +27,24 @@ type NormalizedRawRecord = {
   source: RawRecordSource;
 };
 
-function signedUrl(path: string, apiSecret: string, extraParams: Record<string, string> = {}) {
+function createSignedRequest(path: string, apiSecret: string, extraParams: Record<string, string> = {}) {
+  const timestamp = Date.now().toString();
   const params = new URLSearchParams({
     ...extraParams,
-    timestamp: Date.now().toString(),
+    timestamp,
     recvWindow: RECV_WINDOW,
   });
   const signature = createHmac("sha256", apiSecret).update(params.toString()).digest("hex");
   params.append("signature", signature);
-  return `${BINANCE_BASE_URL}${path}?${params.toString()}`;
+  return {
+    url: `${BINANCE_BASE_URL}${path}?${params.toString()}`,
+    timestamp,
+    signatureBuilt: Boolean(signature),
+  };
+}
+
+function signedUrl(path: string, apiSecret: string, extraParams: Record<string, string> = {}) {
+  return createSignedRequest(path, apiSecret, extraParams).url;
 }
 
 async function signedFetch(path: string, credentials: ExchangeCredentials, extraParams: Record<string, string> = {}) {
@@ -56,6 +67,56 @@ async function readSafeBinanceError(response: Response): Promise<BinanceSafeErro
   } catch {
     return {};
   }
+}
+
+function runtimeEnvironment() {
+  return process.env.VERCEL ? "vercel" : process.env.NODE_ENV || "node";
+}
+
+function safeDiagnostics(
+  path: string,
+  timestamp: string,
+  signatureBuilt: boolean,
+  reached: boolean,
+  response?: Response,
+  binanceError?: BinanceSafeError,
+): BinanceSafeDiagnostics {
+  return {
+    httpStatus: response?.status,
+    binanceCode: binanceError?.code,
+    binanceMessage: binanceError?.msg,
+    requestTargetEndpoint: path,
+    runtimeEnvironment: runtimeEnvironment(),
+    vercelRegion: process.env.VERCEL_REGION || process.env.VERCEL_FUNCTION_REGION,
+    timestamp,
+    recvWindow: RECV_WINDOW,
+    requestReachedBinance: reached,
+    hmacSignatureBuilt: signatureBuilt,
+  };
+}
+
+function classifyBinanceError(error?: BinanceSafeError, response?: Response): BinanceErrorCategory {
+  const message = (error?.msg || "").toLowerCase();
+  if (response?.status === 451 || message.includes("restricted location") || message.includes("eligibility")) {
+    return "restricted_region";
+  }
+  if (message.includes("ip") || message.includes("whitelist")) return "ip_whitelist";
+  if (message.includes("invalid api-key") || message.includes("api-key format invalid")) return "invalid_key";
+  if (message.includes("permission") || message.includes("permissions")) return "permission";
+  if (error?.code === -1021 || message.includes("timestamp") || message.includes("recvwindow")) return "timestamp";
+  if (error?.code === -1022 || message.includes("signature")) return "signature";
+  return "unknown";
+}
+
+function userSafeError(category: BinanceErrorCategory, fallback?: string) {
+  if (category === "restricted_region") return "目前正式伺服器所在區域無法連接 Binance API，我們正在切換後端節點。";
+  if (category === "ip_whitelist") return "這組 API Key 可能限制了允許 IP，請先關閉 IP 限制或加入指定伺服器 IP。";
+  if (category === "invalid_key") return "API Key 或 Secret 可能不正確。";
+  if (category === "permission") return "請確認 API 權限包含唯讀查詢訂單紀錄。";
+  if (category === "timestamp") return "Binance API 時間驗證失敗，請稍後再試。";
+  if (category === "signature") return "API Secret 簽章驗證失敗，請確認 Secret 是否正確。";
+  if (category === "network") return "Binance API 暫時無法連線，請稍後再試。";
+  return fallback || "Binance read-only connection failed.";
 }
 
 function safeMessage(error: unknown) {
@@ -244,14 +305,24 @@ export const BinanceAdapter: ExchangeAdapter = {
     };
   },
   async testConnection(credentials: ExchangeCredentials): Promise<ExchangeConnectionTestResult> {
+    const request = createSignedRequest("/api/v3/account", credentials.apiSecret);
     try {
-      const response = await signedFetch("/api/v3/account", credentials);
+      const response = await fetch(request.url, {
+        method: "GET",
+        headers: {
+          "X-MBX-APIKEY": credentials.apiKey,
+        },
+        cache: "no-store",
+      });
       if (!response.ok) {
         const error = await readSafeBinanceError(response);
+        const errorCategory = classifyBinanceError(error, response);
         return {
           connected: false,
           exchange: "binance",
-          error: error.msg || `Binance returned HTTP ${response.status}.`,
+          error: userSafeError(errorCategory, error.msg || `Binance returned HTTP ${response.status}.`),
+          errorCategory,
+          diagnostics: safeDiagnostics("/api/v3/account", request.timestamp, request.signatureBuilt, true, response, error),
         };
       }
 
@@ -260,12 +331,15 @@ export const BinanceAdapter: ExchangeAdapter = {
         connected: true,
         exchange: "binance",
         permissionsDetected: Array.isArray(body.permissions) ? body.permissions.filter((item) => typeof item === "string") : undefined,
+        diagnostics: safeDiagnostics("/api/v3/account", request.timestamp, request.signatureBuilt, true, response),
       };
     } catch (error) {
       return {
         connected: false,
         exchange: "binance",
-        error: safeMessage(error),
+        error: userSafeError("network", safeMessage(error)),
+        errorCategory: "network",
+        diagnostics: safeDiagnostics("/api/v3/account", request.timestamp, request.signatureBuilt, false),
       };
     }
   },

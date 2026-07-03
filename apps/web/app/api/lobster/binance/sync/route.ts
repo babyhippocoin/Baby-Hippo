@@ -3,6 +3,7 @@ import { BinanceAdapter } from "../../../../../lib/lobster/exchange/adapters/bin
 import type { BhcDcaRecord } from "../../../../../lib/lobster/types";
 
 export const runtime = "nodejs";
+export const preferredRegion = "hnd1";
 
 function readCredentials(body: unknown) {
   if (!body || typeof body !== "object") return null;
@@ -56,6 +57,8 @@ export async function POST(request: Request) {
         exchange: "binance",
         records: [],
         error: connection?.error || "Binance read-only connection failed.",
+        errorCategory: connection?.errorCategory,
+        diagnostics: connection?.diagnostics,
       }, { status: 401 });
     }
 
